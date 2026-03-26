@@ -12,7 +12,7 @@ class AppIconGenerator:
         :param output_dir: 生成的 64x64 图标保存的本地目录
         """
         # 默认使用环境内置的 API Key
-        self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "AIzaSyDDu3RaI_rpYghg7IbqRsdsUErAv0c1k88")
+        self.api_key = api_key or os.environ.get("GEMINI_API_KEY", "")
         self.client = genai.Client(api_key=self.api_key)
         self.output_dir = output_dir
         
