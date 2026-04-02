@@ -179,9 +179,6 @@ class ZipHandler:
             # Calculate checksum
             checksum = self.calculate_checksum(temp_zip_path)
             
-            # Extract content
-            # readme_content, meta_data = self.extract_skill_content(temp_zip_path)
-            
             # Create storage directory for the skill version
             skill_dir = self.upload_dir / skill_name
             skill_dir.mkdir(parents=True, exist_ok=True)
@@ -201,8 +198,6 @@ class ZipHandler:
                 success=True,
                 checksum=checksum,
                 source_url=source_url,
-                # readme_content=readme_content,
-                # meta_data=meta_data,
                 extracted_path=str(stored_path)
             )
             
