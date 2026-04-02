@@ -311,7 +311,6 @@ async def add_skill(skill: SkillCreateRequest):
         await icon_file.save(icon_file_path)
 
     skill_object_key = f"skill-hub/{skill_id}/{skill_file.filename}"
-    # icon_object_key = f"skill-hub/{skill_id}/{icon_file.filename}"
     if has_icon:
         icon_object_key = f"skill-hub/{skill_id}/icon.png"
 
@@ -322,7 +321,6 @@ async def add_skill(skill: SkillCreateRequest):
         cos_client = ObjectStorageClient(config)
         if cos_client.client:
             bucket_name = "sudoclaw-1309794936"
-            # cos_client.clear_folder(bucket_name=bucket_name, folder_prefix='skill-hub')
             cos_client.upload_file(
                 bucket_name=bucket_name,
                 local_file_path=skill_file_path,
@@ -380,8 +378,6 @@ async def add_skill(skill: SkillCreateRequest):
         if existing_version:
             raise BadRequestException(message=f"Version {skill.version} already exists for skill {skill.name}")
 
-        import hashlib
-        # Simple checksum for version
         checksum = ""
         
         version_data = skill.to_version_data(
