@@ -42,6 +42,8 @@ def create_app(config: Config) -> Quart:
     # Configure app settings
     app.config["DEBUG"] = config.debug
     app.config["SECRET_KEY"] = config.auth_token  # Use auth token as secret key
+    app.config["MAX_CONTENT_LENGTH"] = 100 * 1024 * 1024  # 100 MB limit
+
     
     # Register error handlers
     register_error_handlers(app)
