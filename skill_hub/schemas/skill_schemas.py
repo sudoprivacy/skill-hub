@@ -17,6 +17,7 @@ class SkillCreateRequest:
     author_id: Optional[str] = None
     sort_order: Optional[int] = 0
     status: Optional[int] = 0
+    tenant_id: Optional[str] = None
 
     @classmethod
     def from_form_data(cls, form_data: Dict[str, Any]) -> "SkillCreateRequest":
@@ -33,6 +34,7 @@ class SkillCreateRequest:
             homepage=form_data.get("homepage"),
             changelog=form_data.get("changelog"),
             author_id=form_data.get("author_id"),
+            tenant_id=form_data.get("tenant_id"),
             sort_order=int(form_data.get("sort_order", 0)) if form_data.get("sort_order") else 0,
             status=int(form_data.get("status", 0)) if form_data.get("status") else 0,
         )
@@ -58,6 +60,7 @@ class SkillCreateRequest:
             "emoji": self.emoji,
             "homepage": self.homepage,
             "author_id": author_id or self.author_id,
+            "tenant_id": self.tenant_id,
             "sort_order": self.sort_order,
             "status": self.status,
         }
