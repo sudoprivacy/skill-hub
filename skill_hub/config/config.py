@@ -37,6 +37,8 @@ class Config:
     cos_secret_id: str = field(default="")
     cos_secret_key: str = field(default="")
     cos_endpoint: str = field(default="")
+    # Public base URL used to serve COS-hosted assets (e.g. skill icons)
+    cos_base_url: str = field(default="")
 
     def __post_init__(self):
         """Validate configuration after initialization"""
@@ -59,6 +61,7 @@ class Config:
         env_cos_secret_id = os.getenv("SKILL_HUB_COS_SECRET_ID")
         env_cos_secret_key = os.getenv("SKILL_HUB_COS_SECRET_KEY")
         env_cos_endpoint = os.getenv("SKILL_HUB_COS_ENDPOINT")
+        env_cos_base_url = os.getenv("SKILL_HUB_COS_BASE_URL")
         
         # Apply environment variables only if not explicitly set in constructor
         # and environment variable exists
@@ -115,7 +118,15 @@ class Config:
             
         if not self.cos_endpoint and env_cos_endpoint:
             self.cos_endpoint = env_cos_endpoint
-        
+
+        if not self.cos_base_url and env_cos_base_url:
+            self.cos_base_url = env_cos_base_url
+
+        # Normalize cos_base_url by stripping any trailing slash to avoid
+        # double-slashes when concatenating with object keys.
+        if self.cos_base_url:
+            self.cos_base_url = self.cos_base_url.rstrip("/")
+
         # Validate required fields
         if not self.auth_token:
             raise ValueError("SKILL_HUB_AUTH_TOKEN environment variable must be set")
