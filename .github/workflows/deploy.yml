@@ -5,41 +5,65 @@ on:
     branches:
       - main
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
 jobs:
-  deploy:
+  build-and-push-image:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Log in to the Container registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build Docker image
+      - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
-          load: true
-          tags: skill-hub:latest
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Save Docker image to tar archive
-        run: |
-          docker save skill-hub:latest -o skill-hub-latest.tar
-          sudo chmod 644 skill-hub-latest.tar
+  deploy:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
 
-      - name: Copy files via SCP to Remote Server
+    steps:
+      - name: Copy docker-compose.prod.yml via SCP to Remote Server
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "skill-hub-latest.tar,docker-compose.prod.yml"
+          source: "docker-compose.prod.yml"
           target: ${{ secrets.DEPLOY_PATH }}
 
-      - name: Execute SSH Commands to Load and Deploy
+      - name: Execute SSH Commands to Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -48,25 +72,18 @@ jobs:
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status.
 
+            # Log into GitHub Container Registry
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Fix permissions (scp might create files with strict permissions)
-            echo "Adjusting file permissions..."
-            chmod 644 skill-hub-latest.tar docker-compose.prod.yml
-
-            # Load the Docker image from the tar archive
-            echo "Loading Docker image from archive..."
-            docker load -i skill-hub-latest.tar
+            # Pull the latest image
+            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
             # Recreate containers with the new image
-            echo "Starting containers..."
+            docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
 
-            # Clean up the tar archive to save disk space
-            echo "Cleaning up archive..."
-            rm -f skill-hub-latest.tar
-
-            # Clean up dangling and unused images to save disk space
-            echo "Pruning unused Docker images..."
+            # Clean up old dangling images to save disk space
             docker image prune -af

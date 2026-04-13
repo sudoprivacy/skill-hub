@@ -16,7 +16,7 @@ services:
       retries: 5
 
   skill-hub:
-    image: skill-hub:latest
+    image: ghcr.io/${GITHUB_REPOSITORY:-sudoprivacy/skill-hub}:latest
     container_name: skill-hub
     restart: unless-stopped
     ports:
