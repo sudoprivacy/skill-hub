@@ -85,6 +85,9 @@ jobs:
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
             # Recreate containers with the new image
+            # Stop existing containers that might use the same names if they were launched differently
+            docker compose -f docker-compose.prod.yml down || true
+
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d
 
