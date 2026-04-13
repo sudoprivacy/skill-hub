@@ -1,6 +1,8 @@
 """Skill service for database CRUD operations"""
 
+import os
 import uuid
+import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy import select, update, delete, desc, func
@@ -8,6 +10,29 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from skill_hub.models.skill import Skill
 from skill_hub.api.exceptions import NotFoundException, ConflictException
+
+logger = logging.getLogger(__name__)
+
+# Default path (relative to the COS base URL) of the fallback icon used when a
+# skill record does not provide one.
+_DEFAULT_ICON_PATH = "skill-hub/icons/default.png"
+
+
+def _get_cos_base_url() -> str:
+    """Resolve the public base URL for COS-hosted assets.
+
+    The value is read from the ``SKILL_HUB_COS_BASE_URL`` environment variable
+    (also exposed via :class:`skill_hub.config.config.Config.cos_base_url`).
+    Any trailing slash is stripped so callers can safely concatenate with an
+    object key using ``f"{base_url}/{key}"``.
+    """
+    base_url = os.getenv("SKILL_HUB_COS_BASE_URL", "").strip()
+    if not base_url:
+        logger.warning(
+            "SKILL_HUB_COS_BASE_URL is not configured; skill icon URLs will be "
+            "returned as relative paths."
+        )
+    return base_url.rstrip("/")
 
 
 class SkillService:
@@ -195,14 +220,14 @@ class SkillService:
             cloned_skill = Skill(**skill_dict)
             cloned_skills.append(cloned_skill)
             
-        # Replace empty icon with default
-        base_url = 'https://sudoclaw-1309794936.cos.ap-beijing.myqcloud.com'
-        default_icon = 'skill-hub/icons/default.png'
+        # Replace empty icon with default. The base URL is sourced from the
+        # SKILL_HUB_COS_BASE_URL env var (see .env.example / Config) rather
+        # than being hardcoded here.
+        base_url = _get_cos_base_url()
+        default_icon = _DEFAULT_ICON_PATH
         for skill in cloned_skills:
-            if not skill.icon:
-                skill.icon = f"{base_url}/{default_icon}"
-            else:
-                skill.icon = f"{base_url}/{skill.icon}"
+            icon_path = skill.icon if skill.icon else default_icon
+            skill.icon = f"{base_url}/{icon_path}" if base_url else icon_path
                 
         has_more = len(cloned_skills) > limit
         if has_more:
