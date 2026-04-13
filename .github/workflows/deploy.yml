@@ -26,7 +26,9 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Save Docker image to tar archive
-        run: docker save skill-hub:latest -o skill-hub-latest.tar
+        run: |
+          docker save skill-hub:latest -o skill-hub-latest.tar
+          sudo chmod 644 skill-hub-latest.tar
 
       - name: Copy files via SCP to Remote Server
         uses: appleboy/scp-action@v0.1.7
