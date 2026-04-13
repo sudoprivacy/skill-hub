@@ -10,7 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Execute SSH Commands to Build and Deploy
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          load: true
+          tags: skill-hub:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker image to tar archive
+        run: docker save skill-hub:latest -o skill-hub-latest.tar
+
+      - name: Copy files via SCP to Remote Server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          source: "skill-hub-latest.tar,docker-compose.prod.yml"
+          target: ${{ secrets.DEPLOY_PATH }}
+
+      - name: Execute SSH Commands to Load and Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -19,34 +46,20 @@ jobs:
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status.
 
-            # Prepare directories
+            # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Create a temporary directory for the source code
-            TEMP_DIR=$(mktemp -d -p ${{ secrets.DEPLOY_PATH }} source-XXXXXX)
-            echo "Working in temp directory: $TEMP_DIR"
-
-            # Clone the repository
-            git clone -b main https://github.com/${{ github.repository }}.git $TEMP_DIR
-            cd $TEMP_DIR
-
-            # Build the Docker image locally on the server
-            echo "Building Docker image..."
-            docker build -t skill-hub:latest .
-
-            # Copy docker-compose.prod.yml to the DEPLOY_PATH
-            cp docker-compose.prod.yml ${{ secrets.DEPLOY_PATH }}/
-
-            # Return to DEPLOY_PATH
-            cd ${{ secrets.DEPLOY_PATH }}
+            # Load the Docker image from the tar archive
+            echo "Loading Docker image from archive..."
+            docker load -i skill-hub-latest.tar
 
             # Recreate containers with the new image
             echo "Starting containers..."
             docker compose -f docker-compose.prod.yml up -d
 
-            # Clean up the temporary source code directory
-            echo "Cleaning up source code..."
-            rm -rf $TEMP_DIR
+            # Clean up the tar archive to save disk space
+            echo "Cleaning up archive..."
+            rm -f skill-hub-latest.tar
 
             # Clean up dangling and unused images to save disk space
             echo "Pruning unused Docker images..."
