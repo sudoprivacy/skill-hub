@@ -1,20 +1,4 @@
 services:
-  db:
-    image: postgres:16-alpine
-    container_name: skill-hub-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-skill_hub}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skill_hub}
-      POSTGRES_DB: ${POSTGRES_DB:-skill_hub}
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skill_hub}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   skill-hub:
     image: ghcr.io/${GITHUB_REPOSITORY:-sudoprivacy/skill-hub}:latest
     container_name: skill-hub
@@ -24,7 +8,7 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8080
-      - DB_URL=postgresql+asyncpg://${POSTGRES_USER:-skill_hub}:${POSTGRES_PASSWORD:-skill_hub}@db:5432/${POSTGRES_DB:-skill_hub}
+      - DB_URL=${SKILL_HUB_DATABASE_URL}
       - SKILL_HUB_AUTH_TOKEN=${SKILL_HUB_AUTH_TOKEN}
       - DATA_DIR=${DATA_DIR:-/app/data}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
@@ -34,10 +18,6 @@ services:
       - COS_REGION=${COS_REGION:-ap-beijing}
     volumes:
       - skill-hub-data:/app/data
-    depends_on:
-      db:
-        condition: service_healthy
 
 volumes:
-  pgdata:
   skill-hub-data:
