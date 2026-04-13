@@ -7,6 +7,7 @@ class CategoryCreateRequest:
     display_name: str
     order_index: Optional[int] = 0
     icon_url: Optional[str] = None
+    type: Optional[int] = 0
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CategoryCreateRequest":
@@ -15,6 +16,7 @@ class CategoryCreateRequest:
             display_name=data.get("display_name", ""),
             order_index=data.get("order_index", 0),
             icon_url=data.get("icon_url"),
+            type=data.get("type", 0),
         )
 
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -30,6 +32,7 @@ class CategoryCreateRequest:
             "display_name": self.display_name,
             "order_index": self.order_index,
             "icon_url": self.icon_url,
+            "type": self.type,
         }
 
 @dataclass
@@ -38,6 +41,7 @@ class CategoryUpdateRequest:
     display_name: Optional[str] = None
     order_index: Optional[int] = None
     icon_url: Optional[str] = None
+    type: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "CategoryUpdateRequest":
@@ -46,11 +50,12 @@ class CategoryUpdateRequest:
             display_name=data.get("display_name"),
             order_index=data.get("order_index"),
             icon_url=data.get("icon_url"),
+            type=data.get("type"),
         )
 
     def validate(self) -> Tuple[bool, Optional[str]]:
         # at least one field should be present to update
-        if self.name is None and self.display_name is None and self.order_index is None and self.icon_url is None:
+        if self.name is None and self.display_name is None and self.order_index is None and self.icon_url is None and self.type is None:
             return False, "at least one field is required to update"
         return True, None
 
@@ -64,4 +69,6 @@ class CategoryUpdateRequest:
             data["order_index"] = self.order_index
         if self.icon_url is not None:
             data["icon_url"] = self.icon_url
+        if self.type is not None:
+            data["type"] = self.type
         return data

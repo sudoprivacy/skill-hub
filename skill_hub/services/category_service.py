@@ -39,24 +39,49 @@ class CategoryService:
             
     async def get_by_name(self, name: str) -> Optional[Category]:
         """Get category by name
-        
+
         Args:
             name: Category name
-            
+
         Returns:
             Category if found, None otherwise
         """
         query = select(Category).where(Category.name == name)
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
-        
-    async def list_all(self) -> List[Category]:
+
+    async def get_by_name_and_type(self, name: str, category_type: int) -> Optional[Category]:
+        """Get category by name and type
+
+        Args:
+            name: Category name
+            category_type: Category type (0=skill, 1=assistant)
+
+        Returns:
+            Category if found, None otherwise
+        """
+        query = select(Category).where(
+            Category.name == name,
+            Category.type == category_type
+        )
+        result = await self.session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def list_all(self, type_filter: Optional[int] = None) -> List[Category]:
         """Get all categories ordered by order_index
-        
+
+        Args:
+            type_filter: Optional integer to filter by category type
+
         Returns:
             List of Category objects
         """
-        query = select(Category).order_by(asc(Category.order_index))
+        query = select(Category)
+
+        if type_filter is not None:
+            query = query.where(Category.type == type_filter)
+
+        query = query.order_by(asc(Category.order_index))
         result = await self.session.execute(query)
         return list(result.scalars().all())
         

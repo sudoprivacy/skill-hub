@@ -59,7 +59,7 @@ class SkillService:
             ConflictException: If skill with same name already exists
         """
         # Check if skill with same name already exists
-        existing = await self.get_by_name(skill_data.get("name"))
+        existing = await self.get_by_name(skill_data.get("name"), skill_data.get("tenant_id"))
         if existing:
             raise ConflictException(
                 message=f"Skill with name '{skill_data['name']}' already exists"
@@ -99,16 +99,23 @@ class SkillService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def get_by_name(self, name: str) -> Optional[Skill]:
+    async def get_by_name(self, name: str, tenant_id: Optional[str] = None) -> Optional[Skill]:
         """Get skill by name
-        
+
         Args:
             name: Skill name
-            
+            tenant_id: Tenant ID filter
+
         Returns:
             Skill if found, None otherwise
         """
         stmt = select(Skill).where(Skill.name == name)
+
+        if tenant_id is not None:
+            stmt = stmt.where(Skill.tenant_id == tenant_id)
+        else:
+            stmt = stmt.where(Skill.tenant_id.is_(None))
+
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
@@ -118,26 +125,33 @@ class SkillService:
         limit: int = 10,
         categories: Optional[str] = None,
         author_id: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """List skills with cursor-based pagination
-        
+
         Args:
             cursor: Cursor string (base64 encoded datetime or id)
             limit: Items per page
-            category_id: Filter by category ID
+            categories: Filter by categories
             author_id: Filter by author ID
             search: Search in name, display_name, and description
-            
+            tenant_id: Filter by tenant ID
+
         Returns:
             Dictionary with skills, next_cursor, and has_more
         """
         import base64
         import json
-        
+
         # Build query
         stmt = select(Skill).where(Skill.status == 1)
-                
+
+        if tenant_id is not None:
+            stmt = stmt.where(Skill.tenant_id == tenant_id)
+        else:
+            stmt = stmt.where(Skill.tenant_id.is_(None))
+
         if categories:
             # Query if the string value is present in the categories array
             stmt = stmt.where(Skill.categories.any(categories))
@@ -241,27 +255,33 @@ class SkillService:
         author_id: Optional[str] = None,
         search: Optional[str] = None,
         sort_by: str = "created_at",
-        sort_order: str = "desc"
+        sort_order: str = "desc",
+        tenant_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """List skills with pagination and filtering
-        
+
         Args:
             page: Page number (1-indexed)
             per_page: Items per page
-            categories: Filter by category
+            categories: Filter by categories
             author_id: Filter by author ID
             search: Search in name, display_name, and description
             sort_by: Field to sort by (name, display_name, star_count, created_at)
             sort_order: Sort order (asc or desc)
-            
+            tenant_id: Filter by tenant ID
+
         Returns:
             Dictionary with skills and pagination info
         """
         # Build query
         stmt = select(Skill).where(Skill.status != 0)
-        
+
         # Apply filters
-            
+        if tenant_id is not None:
+            stmt = stmt.where(Skill.tenant_id == tenant_id)
+        else:
+            stmt = stmt.where(Skill.tenant_id.is_(None))
+
         if categories:
             stmt = stmt.where(Skill.categories.any(categories))
         
@@ -337,7 +357,7 @@ class SkillService:
         
         # Check if name is being changed and if new name already exists
         if "name" in update_data and update_data["name"] != skill.name:
-            existing = await self.get_by_name(update_data["name"])
+            existing = await self.get_by_name(update_data["name"], update_data.get("tenant_id", skill.tenant_id))
             if existing and existing.id != skill.id:
                 raise ConflictException(
                     message=f"Skill with name '{update_data['name']}' already exists"
@@ -418,9 +438,12 @@ class SkillService:
         
         return skill
     
-    async def get_categories(self) -> List[str]:
+    async def get_categories(self, tenant_id: Optional[str] = None) -> List[str]:
         """Get list of all categories ordered by count descending
-        
+
+        Args:
+            tenant_id: Tenant ID filter
+
         Returns:
             List of unique categories
         """
@@ -428,46 +451,66 @@ class SkillService:
             select(Skill.category)
             .where(Skill.category.isnot(None))
             .where(Skill.category != "")
-            .group_by(Skill.category)
-            .order_by(desc(func.count(Skill.id)))
         )
+
+        if tenant_id is not None:
+            stmt = stmt.where(Skill.tenant_id == tenant_id)
+        else:
+            stmt = stmt.where(Skill.tenant_id.is_(None))
+
+        stmt = stmt.group_by(Skill.category).order_by(desc(func.count(Skill.id)))
+
         result = await self.session.execute(stmt)
         categories = result.scalars().all()
         
         return [cat for cat in categories if cat]
     
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self, tenant_id: Optional[str] = None) -> Dict[str, Any]:
         """Get skill statistics
-        
+
+        Args:
+            tenant_id: Tenant ID filter
+
         Returns:
             Dictionary with statistics
         """
+        # Base query logic with tenant_id filter
+        def apply_tenant_filter(stmt_query):
+            if tenant_id is not None:
+                return stmt_query.where(Skill.tenant_id == tenant_id)
+            else:
+                return stmt_query.where(Skill.tenant_id.is_(None))
+
         # Total skills count
-        total_stmt = select(func.count()).select_from(Skill)
+        total_stmt = apply_tenant_filter(select(func.count()).select_from(Skill))
         total = (await self.session.execute(total_stmt)).scalar()
-        
+
         # Total stars count
-        stars_stmt = select(func.sum(Skill.star_count))
+        stars_stmt = apply_tenant_filter(select(func.sum(Skill.star_count)).select_from(Skill))
         total_stars = (await self.session.execute(stars_stmt)).scalar() or 0
-        
+
         # Skills per category
         category_stmt = (
             select(Skill.category, func.count().label("count"))
             .where(Skill.category.isnot(None))
-            .group_by(Skill.category)
         )
+        category_stmt = apply_tenant_filter(category_stmt)
+        category_stmt = category_stmt.group_by(Skill.category)
+
         category_result = await self.session.execute(category_stmt)
         categories = {
             row.category: row.count
             for row in category_result
             if row.category
         }
-        
+
         # Recent skills (last 7 days)
         week_ago = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
         week_ago = week_ago.replace(day=week_ago.day - 7)
-        
+
         recent_stmt = select(func.count()).where(Skill.created_at >= week_ago)
+        recent_stmt = apply_tenant_filter(recent_stmt)
+
         recent = (await self.session.execute(recent_stmt)).scalar()
         
         return {

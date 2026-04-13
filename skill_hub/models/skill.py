@@ -60,7 +60,14 @@ class Skill(Base):
         index=True,
         comment="Developer ID"
     )
-    
+
+    tenant_id = Column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="Tenant ID"
+    )
+
     # Skill details
     description = Column(
         Text,
@@ -168,6 +175,7 @@ class Skill(Base):
             "name": self.name,
             "display_name": self.display_name,
             "author_id": str(self.author_id),
+            "tenant_id": self.tenant_id,
             "description": self.description,
             "category": self.category,
             "categories": self.categories,
@@ -207,7 +215,10 @@ class Skill(Base):
         
         if "author_id" in data and data["author_id"]:
             skill.author_id = uuid.UUID(data["author_id"]) if isinstance(data["author_id"], str) else data["author_id"]
-        
+
+        if "tenant_id" in data:
+            skill.tenant_id = data["tenant_id"]
+
         if "description" in data:
             skill.description = data["description"]
             

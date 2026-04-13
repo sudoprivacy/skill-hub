@@ -24,6 +24,8 @@ def map_request(f):
     @wraps(f)
     async def decorated_function(*args, **kwargs):
         form_data = await request.form
+        # Add tenant_id from args if not in form data but present in args, though usually it comes from auth/context
+        # Let's keep it simple and just use form data for POST
         skill_request = SkillCreateRequest.from_form_data(form_data)
         
         is_valid, error = skill_request.validate()
@@ -88,14 +90,16 @@ async def list_skills_cursor():
     limit = request.args.get("limit", 10, type=int)
     query = request.args.get("query", "")
     categories = request.args.get("categories", "")
-    
+    tenant_id = request.args.get("tenant_id", None)
+
     async with get_session() as session:
         skill_service = SkillService(session)
         result = await skill_service.list_all_cursor(
             cursor=cursor,
             limit=limit,
             search=query if query else None,
-            categories=categories if categories else None
+            categories=categories if categories else None,
+            tenant_id=tenant_id
         )
         
         # Convert objects to dicts for JSON serialization
@@ -353,18 +357,12 @@ async def add_skill(skill: SkillCreateRequest):
 
         author_id = ""
         skill_data = skill.to_skill_data(author_id)
-        
-        # We need to include the icon URL in skill_data. Let's assume the icon URL is the object key or a constructed URL.
-        # But `SkillCreateRequest.to_skill_data` doesn't include icon. Let's add it manually.
-        # Actually, let's just use the object key for now.
+
         if has_icon:
-            if hasattr(skill_data, "icon"):
-                skill_data["icon"] = icon_object_key
-            else:
-                skill_data["icon"] = icon_object_key
-            
+            skill_data["icon"] = icon_object_key
+
         # Create or update skill
-        existing_skill = await skill_service.get_by_name(skill.name)
+        existing_skill = await skill_service.get_by_name(skill.name, skill.tenant_id)
         if not existing_skill:
             # Overwrite id to be our generated skill_id
             skill_data["id"] = skill_id
