@@ -1,0 +1,47 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: skill-hub-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-skill_hub}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skill_hub}
+      POSTGRES_DB: ${POSTGRES_DB:-skill_hub}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skill_hub} -d ${POSTGRES_DB:-skill_hub}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  skill-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: skill-hub:latest
+    container_name: skill-hub
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SKILL_HUB_HOST: 0.0.0.0
+      SKILL_HUB_PORT: 8080
+      SKILL_HUB_DEBUG: "false"
+      SKILL_HUB_AUTH_TOKEN: ${SKILL_HUB_AUTH_TOKEN:-change-me-please}
+      SKILL_HUB_DATABASE_URL: postgresql://${POSTGRES_USER:-skill_hub}:${POSTGRES_PASSWORD:-skill_hub}@db:5432/${POSTGRES_DB:-skill_hub}
+      SKILL_HUB_DATABASE_POOL_SIZE: "10"
+      SKILL_HUB_DATABASE_MAX_OVERFLOW: "20"
+      SKILL_HUB_DATABASE_POOL_RECYCLE: "3600"
+      SKILL_HUB_DATA_DIR: /app/data
+      SKILL_HUB_LOG_LEVEL: INFO
+      SKILL_HUB_API_PREFIX: /api
+    ports:
+      - "${SKILL_HUB_PORT:-8080}:8080"
+    volumes:
+      - skill-hub-data:/app/data
+
+volumes:
+  pgdata:
+  skill-hub-data:

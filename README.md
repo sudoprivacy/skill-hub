@@ -163,6 +163,56 @@ curl -X POST http://localhost:8080/api/skills \
   }'
 ```
 
+## Docker
+
+Skill Hub ships with a production-ready `Dockerfile` (multi-stage build, non-root user, tini as PID 1, healthcheck) and a `docker-compose.yml` that also provisions a PostgreSQL database for local use.
+
+### Build the image
+
+```bash
+docker build -t skill-hub:latest .
+```
+
+### Run the container
+
+```bash
+docker run --rm -p 8080:8080 \
+  -e SKILL_HUB_AUTH_TOKEN=your-secret-token \
+  -e SKILL_HUB_DATABASE_URL=postgresql://user:pass@host:5432/skill_hub \
+  -v skill-hub-data:/app/data \
+  --name skill-hub \
+  skill-hub:latest
+```
+
+All configuration options in the [Configuration Options](#configuration-options) table can be passed via `-e` environment variables. The container listens on port `8080` and runs as the non-root `skillhub` user.
+
+### Run with docker-compose (app + PostgreSQL)
+
+```bash
+# Optional: override defaults by exporting variables or creating a .env file
+export SKILL_HUB_AUTH_TOKEN=your-secret-token
+
+docker compose up -d --build
+```
+
+This will start a PostgreSQL 16 instance and the Skill Hub API server wired together on an internal network. Data is persisted to the `pgdata` and `skill-hub-data` named volumes.
+
+To stop and remove the stack:
+
+```bash
+docker compose down          # keep volumes
+docker compose down -v       # also remove volumes (destructive)
+```
+
+### Publishing the image
+
+You can tag and push the image to any container registry:
+
+```bash
+docker tag skill-hub:latest ghcr.io/<owner>/skill-hub:latest
+docker push ghcr.io/<owner>/skill-hub:latest
+```
+
 ## Development
 
 ### Running Tests
