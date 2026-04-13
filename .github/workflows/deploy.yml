@@ -49,6 +49,10 @@ jobs:
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
+            # Fix permissions (scp might create files with strict permissions)
+            echo "Adjusting file permissions..."
+            chmod 644 skill-hub-latest.tar docker-compose.prod.yml
+
             # Load the Docker image from the tar archive
             echo "Loading Docker image from archive..."
             docker load -i skill-hub-latest.tar
