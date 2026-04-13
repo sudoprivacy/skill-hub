@@ -17,21 +17,6 @@ logger = logging.getLogger(__name__)
 
 assistants_router = Blueprint("assistants", __name__)
 
-@assistants_router.route("", methods=["GET"])
-@token_required
-async def list_assistants():
-    """Get list of assistants"""
-    category_id = request.args.get("categoryId", type=str)
-
-    async with get_session() as session:
-        assistant_service = AssistantService(session)
-        assistants = await assistant_service.list_all(category_id=category_id)
-        assistants_data = [a.to_dict() for a in assistants]
-
-    return success_response(
-        data=assistants_data,
-        message="Assistants retrieved successfully"
-    )
 
 @assistants_router.route("/cursor", methods=["GET"])
 @token_required
