@@ -18,11 +18,13 @@ categories_router = Blueprint("categories", __name__)
 @token_required
 async def list_categories():
     """Get list of categories"""
+    type_filter = request.args.get("type", default=0, type=int)
+
     async with get_session() as session:
         category_service = CategoryService(session)
-        categories = await category_service.list_all()
-        categories_data = [c.display_name for c in categories]
-        
+        categories = await category_service.list_all(type_filter=type_filter)
+        categories_data = [c.to_dict() for c in categories]
+
     return success_response(
         data=categories_data,
         message="Categories retrieved successfully"
@@ -59,10 +61,10 @@ async def create_category():
     async with get_session() as session:
         category_service = CategoryService(session)
         
-        # Check if already exists
-        existing = await category_service.get_by_name(req.name)
+        # Check if already exists for this specific type
+        existing = await category_service.get_by_name_and_type(req.name, req.type)
         if existing:
-            raise BadRequestException(message="Category name already exists")
+            raise BadRequestException(message="Category name already exists for this type")
             
         category = await category_service.create(req.to_category_data())
         category_dict = category.to_dict()

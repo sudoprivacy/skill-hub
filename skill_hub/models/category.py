@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime
+from sqlalchemy import Column, String, Integer, DateTime, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 
 from skill_hub.models.skill import Base
@@ -21,7 +21,12 @@ class Category(Base):
     """
     
     __tablename__ = "categories"
-    
+
+    # Add composite unique constraint
+    __table_args__ = (
+        UniqueConstraint('name', 'type', name='uix_category_name_type'),
+    )
+
     # Primary key
     id = Column(
         UUID(as_uuid=True),
@@ -35,7 +40,6 @@ class Category(Base):
     name = Column(
         String(255),
         nullable=False,
-        unique=True,
         index=True,
         comment="Category code/identifier"
     )
@@ -58,7 +62,14 @@ class Category(Base):
         nullable=True,
         comment="Icon URL for the category"
     )
-    
+
+    type = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="0 for skill, 1 for assistant"
+    )
+
     # Timestamps
     created_at = Column(
         DateTime(timezone=True),
@@ -88,6 +99,7 @@ class Category(Base):
             "display_name": self.display_name,
             "order_index": self.order_index,
             "icon_url": self.icon_url,
+            "type": self.type,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -111,7 +123,10 @@ class Category(Base):
             
         if "icon_url" in data:
             category.icon_url = data["icon_url"]
-            
+
+        if "type" in data:
+            category.type = data["type"]
+
         if "created_at" in data and data["created_at"]:
             if isinstance(data["created_at"], str):
                 category.created_at = datetime.fromisoformat(data["created_at"].replace('Z', '+00:00'))
