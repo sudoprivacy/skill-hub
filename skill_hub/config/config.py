@@ -36,7 +36,6 @@ class Config:
     # Object Storage settings
     cos_secret_id: str = field(default="")
     cos_secret_key: str = field(default="")
-    cos_endpoint: str = field(default="")
     # Public base URL used to serve COS-hosted assets (e.g. skill icons)
     cos_base_url: str = field(default="")
 
@@ -60,7 +59,6 @@ class Config:
         env_api_prefix = os.getenv("SKILL_HUB_API_PREFIX")
         env_cos_secret_id = os.getenv("SKILL_HUB_COS_SECRET_ID")
         env_cos_secret_key = os.getenv("SKILL_HUB_COS_SECRET_KEY")
-        env_cos_endpoint = os.getenv("SKILL_HUB_COS_ENDPOINT")
         env_cos_base_url = os.getenv("SKILL_HUB_COS_BASE_URL")
         
         # Apply environment variables only if not explicitly set in constructor
@@ -115,9 +113,6 @@ class Config:
             
         if not self.cos_secret_key and env_cos_secret_key:
             self.cos_secret_key = env_cos_secret_key
-            
-        if not self.cos_endpoint and env_cos_endpoint:
-            self.cos_endpoint = env_cos_endpoint
 
         if not self.cos_base_url and env_cos_base_url:
             self.cos_base_url = env_cos_base_url

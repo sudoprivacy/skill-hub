@@ -17,7 +17,6 @@ class ObjectStorageClient:
         self.secret_id = config.cos_secret_id
         self.secret_key = config.cos_secret_key
         self.region = 'ap-beijing'
-        self.cos_endpoint = config.cos_endpoint
 
         if not self.secret_id or not self.secret_key or not self.region:
             logger.warning("Object storage credentials are not fully configured")
