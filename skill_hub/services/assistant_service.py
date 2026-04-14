@@ -187,7 +187,7 @@ class AssistantService:
         }
 
     def _format_assistants(self, assistants: List[Assistant]) -> List[Assistant]:
-        """Format assistant data, prepending CDN URL to avatar and prompt_file if they are just paths"""
+        """Format assistant data, prepending CDN URL to avatar, prompt_file and source_url if they are just paths"""
         import copy
 
         formatted_assistants = []
@@ -203,6 +203,9 @@ class AssistantService:
 
             if cloned.prompt_file and not cloned.prompt_file.startswith('http'):
                 cloned.prompt_file = f"{base_url}/{cloned.prompt_file}"
+
+            if cloned.source_url and not cloned.source_url.startswith('http'):
+                cloned.source_url = f"{base_url}/{cloned.source_url}"
 
             formatted_assistants.append(cloned)
 
