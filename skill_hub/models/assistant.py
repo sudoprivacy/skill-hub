@@ -2,7 +2,7 @@
 
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, Text, DateTime, ForeignKey
+from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID
 
 from skill_hub.models.skill import Base
@@ -77,7 +77,21 @@ class Assistant(Base):
         index=True,
         comment="Reference to the category (must be type 1)"
     )
-    
+
+    tenant_id = Column(
+        String(255),
+        nullable=True,
+        index=True,
+        comment="Tenant ID"
+    )
+
+    sort_order = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Sort order for display priority"
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.utcnow,
@@ -108,6 +122,8 @@ class Assistant(Base):
             "avatar": self.avatar,
             "defaultInitPrompt": self.default_init_prompt,
             "categoryId": str(self.category_id) if self.category_id else None,
+            "tenantId": self.tenant_id,
+            "sortOrder": self.sort_order,
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -146,7 +162,17 @@ class Assistant(Base):
             assistant.category_id = uuid.UUID(data["categoryId"]) if isinstance(data["categoryId"], str) else data["categoryId"]
         elif "category_id" in data and data["category_id"]:
             assistant.category_id = uuid.UUID(data["category_id"]) if isinstance(data["category_id"], str) else data["category_id"]
-            
+
+        if "tenantId" in data:
+            assistant.tenant_id = data["tenantId"]
+        elif "tenant_id" in data:
+            assistant.tenant_id = data["tenant_id"]
+
+        if "sortOrder" in data:
+            assistant.sort_order = data["sortOrder"]
+        elif "sort_order" in data:
+            assistant.sort_order = data["sort_order"]
+
         if "createdAt" in data and data["createdAt"]:
             if isinstance(data["createdAt"], str):
                 assistant.created_at = datetime.fromisoformat(data["createdAt"].replace('Z', '+00:00'))
