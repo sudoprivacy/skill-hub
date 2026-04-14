@@ -21,4 +21,4 @@ python main.py \
     --data-dir "${SKILL_HUB_DATA_DIR:-./data}" \
     --log-level "${SKILL_HUB_LOG_LEVEL:-INFO}" \
     --api-prefix "${SKILL_HUB_API_PREFIX:-/api}" \
-    "$([ "${SKILL_HUB_DEBUG:-false}" = "true" ] && echo "--debug")"
+    $([ "${SKILL_HUB_DEBUG:-false}" = "true" ] && echo "--debug")
