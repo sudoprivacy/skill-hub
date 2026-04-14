@@ -17,13 +17,20 @@ categories_router = Blueprint("categories", __name__)
 @categories_router.route("", methods=["GET"])
 @token_required
 async def list_categories():
-    """Get list of categories"""
+    """Get list of categories
+
+    Args:
+        type (int, optional): 0 for skill categories, 1 for assistant categories. Defaults to 0.
+
+    Returns:
+        List of display_name strings for the requested category type.
+    """
     type_filter = request.args.get("type", default=0, type=int)
 
     async with get_session() as session:
         category_service = CategoryService(session)
         categories = await category_service.list_all(type_filter=type_filter)
-        categories_data = [c.to_dict() for c in categories]
+        categories_data = [c.display_name for c in categories]
 
     return success_response(
         data=categories_data,
