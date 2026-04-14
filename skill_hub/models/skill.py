@@ -1,7 +1,7 @@
 """Skill model definition"""
 
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
@@ -162,7 +162,7 @@ class Skill(Base):
         return f"<Skill(id={self.id}, name='{self.name}', display_name='{self.display_name}')>"
     
     # Relationships (use string reference to avoid circular import)
-    versions = relationship("SkillVersion", back_populates="skill", cascade="all, delete-orphan")
+    versions = relationship("SkillVersion", back_populates="skill", cascade="all, delete-orphan", lazy="selectin")
     
     def to_dict(self) -> dict:
         """Convert skill to dictionary representation
@@ -170,7 +170,8 @@ class Skill(Base):
         Returns:
             Dictionary containing skill data
         """
-        return {
+        # Base dictionary
+        result = {
             "id": str(self.id),
             "name": self.name,
             "display_name": self.display_name,
@@ -190,6 +191,22 @@ class Skill(Base):
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+        # Include latest version if versions are loaded
+        if hasattr(self, "versions") and self.versions:
+            # Sort versions by created_at desc or version desc to get the latest
+            sorted_versions = sorted(self.versions, key=lambda v: v.created_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
+            if sorted_versions:
+                latest = sorted_versions[0]
+                result["latestVersion"] = {
+                    "version": latest.version,
+                    "source_url": "https://sudoclaw-1309794936.cos.ap-beijing.myqcloud.com/" + latest.source_url if latest.source_url and not latest.source_url.startswith('http') else latest.source_url,
+                    "checksum": latest.checksum,
+                    "changelog": latest.changelog,
+                    "created_at": latest.created_at.isoformat() if latest.created_at else None
+                }
+
+        return result
     
     @classmethod
     def from_dict(cls, data: dict) -> "Skill":

@@ -6,6 +6,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from sqlalchemy import select, update, delete, desc, func
+from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from skill_hub.models.skill import Skill
@@ -145,7 +146,7 @@ class SkillService:
         import json
 
         # Build query
-        stmt = select(Skill).where(Skill.status == 1)
+        stmt = select(Skill).options(selectinload(Skill.versions)).where(Skill.status == 1)
 
         if tenant_id is not None:
             stmt = stmt.where(Skill.tenant_id == tenant_id)
@@ -218,6 +219,9 @@ class SkillService:
             # but since we're returning models usually, let's create a superficial clone
             skill_dict = {c.name: getattr(skill, c.name) for c in skill.__table__.columns}
             cloned_skill = Skill(**skill_dict)
+            # Make sure we carry over the eagerly loaded relationships!
+            if hasattr(skill, 'versions'):
+                cloned_skill.versions = skill.versions
             cloned_skills.append(cloned_skill)
             
         # Replace empty icon with default. The base URL is sourced from the
