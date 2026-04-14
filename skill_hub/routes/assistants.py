@@ -94,6 +94,7 @@ async def create_assistant():
     # Get files
     prompt_file = files.get("prompt_file")
     avatar_file = files.get("avatar")
+    source_url_file = files.get("source_url")
 
     # Validate files
     if prompt_file and not prompt_file.filename.endswith('.md'):
@@ -101,6 +102,9 @@ async def create_assistant():
 
     if avatar_file and not avatar_file.filename.endswith('.png'):
         raise BadRequestException(message="avatar must be a .png file")
+
+    if source_url_file and not source_url_file.filename.endswith('.zip'):
+        raise BadRequestException(message="source_url must be a .zip file")
 
     # Pre-generate UUID for both storage and database
     assistant_id = str(uuid.uuid4())
@@ -114,7 +118,7 @@ async def create_assistant():
             raise BadRequestException(message="Assistant name already exists")
 
         # Check if we need to upload files
-        has_files = prompt_file or avatar_file
+        has_files = prompt_file or avatar_file or source_url_file
 
         if has_files:
             config = current_app.config.get("APP_CONFIG")
@@ -138,6 +142,13 @@ async def create_assistant():
                 await avatar_file.save(avatar_file_path)
                 avatar_object_key = f"assistant-hub/{assistant_id}/avatar.png"
 
+            source_url_file_path = None
+            source_url_object_key = None
+            if source_url_file:
+                source_url_file_path = os.path.join(temp_dir, source_url_file.filename)
+                await source_url_file.save(source_url_file_path)
+                source_url_object_key = f"assistant-hub/{assistant_id}/{source_url_file.filename}"
+
             # Upload to Tencent Cloud Object Storage
             try:
                 cos_client = ObjectStorageClient(config)
@@ -160,6 +171,14 @@ async def create_assistant():
                             object_key=avatar_object_key
                         )
                         req.avatar = avatar_object_key
+
+                    if source_url_file_path and source_url_object_key:
+                        cos_client.upload_file(
+                            bucket_name=bucket_name,
+                            local_file_path=source_url_file_path,
+                            object_key=source_url_object_key
+                        )
+                        req.source_url = source_url_object_key
                 else:
                     logger.warning("ObjectStorageClient is not initialized")
             except Exception as e:
@@ -172,6 +191,8 @@ async def create_assistant():
                     os.remove(prompt_file_path)
                 if avatar_file_path and os.path.exists(avatar_file_path):
                     os.remove(avatar_file_path)
+                if source_url_file_path and os.path.exists(source_url_file_path):
+                    os.remove(source_url_file_path)
                 if os.path.exists(temp_dir):
                     os.rmdir(temp_dir)
             except Exception as e:

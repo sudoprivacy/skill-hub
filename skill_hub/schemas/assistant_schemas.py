@@ -8,6 +8,7 @@ class AssistantCreateRequest:
     description: Optional[str] = None
     prompt_file: Optional[str] = None
     avatar: Optional[str] = None
+    source_url: Optional[str] = None
     default_init_prompt: Optional[str] = None
     category_id: Optional[str] = None
     tenant_id: Optional[str] = None
@@ -31,6 +32,7 @@ class AssistantCreateRequest:
             description=_get_val("description"),
             prompt_file=_get_val("promptFile", "prompt_file"),
             avatar=_get_val("avatar"),
+            source_url=_get_val("sourceUrl", "source_url"),
             default_init_prompt=_get_val("defaultInitPrompt", "default_init_prompt"),
             category_id=_get_val("categoryId", "category_id"),
             tenant_id=_get_val("tenantId", "tenant_id"),
@@ -62,6 +64,9 @@ class AssistantCreateRequest:
         if self.avatar is not None:
             data["avatar"] = self.avatar
 
+        if self.source_url is not None:
+            data["source_url"] = self.source_url
+
         if self.default_init_prompt is not None:
             data["default_init_prompt"] = self.default_init_prompt
 
@@ -83,6 +88,7 @@ class AssistantUpdateRequest:
     description: Optional[str] = None
     prompt_file: Optional[str] = None
     avatar: Optional[str] = None
+    source_url: Optional[str] = None
     default_init_prompt: Optional[str] = None
     category_id: Optional[str] = None
     tenant_id: Optional[str] = None
@@ -96,6 +102,7 @@ class AssistantUpdateRequest:
             description=data.get("description"),
             prompt_file=data.get("promptFile") or data.get("prompt_file"),
             avatar=data.get("avatar"),
+            source_url=data.get("sourceUrl") or data.get("source_url"),
             default_init_prompt=data.get("defaultInitPrompt") or data.get("default_init_prompt"),
             category_id=data.get("categoryId") or data.get("category_id"),
             tenant_id=data.get("tenantId") or data.get("tenant_id"),
@@ -106,7 +113,7 @@ class AssistantUpdateRequest:
         # Ensure at least one field is provided for update
         fields = [
             self.name, self.profession, self.description,
-            self.prompt_file, self.avatar, self.default_init_prompt, self.category_id, self.tenant_id, self.sort_order
+            self.prompt_file, self.avatar, self.source_url, self.default_init_prompt, self.category_id, self.tenant_id, self.sort_order
         ]
         
         if all(field is None for field in fields):
@@ -138,7 +145,10 @@ class AssistantUpdateRequest:
             
         if self.avatar is not None:
             data["avatar"] = self.avatar
-            
+
+        if self.source_url is not None:
+            data["source_url"] = self.source_url
+
         if self.default_init_prompt is not None:
             data["default_init_prompt"] = self.default_init_prompt
             

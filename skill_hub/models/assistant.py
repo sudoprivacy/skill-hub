@@ -63,7 +63,13 @@ class Assistant(Base):
         nullable=True,
         comment="URL to the assistant avatar image"
     )
-    
+
+    source_url = Column(
+        String(500),
+        nullable=True,
+        comment="URL to the uploaded zip file"
+    )
+
     default_init_prompt = Column(
         Text,
         nullable=True,
@@ -120,6 +126,7 @@ class Assistant(Base):
             "description": self.description,
             "promptFile": self.prompt_file,
             "avatar": self.avatar,
+            "sourceUrl": self.source_url,
             "defaultInitPrompt": self.default_init_prompt,
             "categoryId": str(self.category_id) if self.category_id else None,
             "tenantId": self.tenant_id,
@@ -152,7 +159,12 @@ class Assistant(Base):
             
         if "avatar" in data:
             assistant.avatar = data["avatar"]
-            
+
+        if "sourceUrl" in data:
+            assistant.source_url = data["sourceUrl"]
+        elif "source_url" in data:
+            assistant.source_url = data["source_url"]
+
         if "defaultInitPrompt" in data:
             assistant.default_init_prompt = data["defaultInitPrompt"]
         elif "default_init_prompt" in data:
