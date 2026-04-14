@@ -73,7 +73,7 @@ class AssistantService:
         else:
             query = query.where(Assistant.tenant_id.is_(None))
 
-        query = query.order_by(desc(Assistant.created_at))
+        query = query.order_by(desc(Assistant.sort_order), desc(Assistant.created_at))
         result = await self.session.execute(query)
 
         assistants = list(result.scalars().all())
@@ -140,18 +140,20 @@ class AssistantService:
                 logging.getLogger(__name__).warning(f"Failed to decode cursor: {e}")
 
         if cursor_data:
+            cursor_sort_order = cursor_data.get('sort_order', 0)
             cursor_created_at = cursor_data['created_at']
             cursor_id = cursor_data['id']
 
-            # Keyset pagination logic for created_at DESC, id DESC
+            # Keyset pagination logic for sort_order DESC, created_at DESC, id DESC
             query = query.where(
-                (func.cast(Assistant.created_at, sqlalchemy.String) < cursor_created_at) |
-                ((func.cast(Assistant.created_at, sqlalchemy.String) == cursor_created_at) &
-                 (func.cast(Assistant.id, sqlalchemy.String) < cursor_id))
+                (Assistant.sort_order < cursor_sort_order) |
+                ((Assistant.sort_order == cursor_sort_order) & (func.cast(Assistant.created_at, sqlalchemy.String) < cursor_created_at)) |
+                ((Assistant.sort_order == cursor_sort_order) & (func.cast(Assistant.created_at, sqlalchemy.String) == cursor_created_at) & (func.cast(Assistant.id, sqlalchemy.String) < cursor_id))
             )
 
-        # Order by created_at DESC, id DESC
+        # Order by sort_order DESC, created_at DESC, id DESC
         query = query.order_by(
+            desc(Assistant.sort_order),
             desc(Assistant.created_at),
             desc(func.cast(Assistant.id, sqlalchemy.String))
         )
@@ -172,9 +174,10 @@ class AssistantService:
         next_cursor = None
         if formatted_assistants:
             last_assistant = formatted_assistants[-1]
+            last_sort_order = last_assistant.sort_order
             last_created = last_assistant.created_at.isoformat() if last_assistant.created_at else ""
             last_id = str(last_assistant.id)
-            cursor_dict = {"created_at": last_created, "id": last_id}
+            cursor_dict = {"sort_order": last_sort_order, "created_at": last_created, "id": last_id}
             next_cursor = base64.b64encode(json.dumps(cursor_dict).encode('utf-8')).decode('utf-8')
 
         return {
