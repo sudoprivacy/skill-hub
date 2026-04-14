@@ -48,11 +48,12 @@ class AssistantService:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
         
-    async def list_all(self, category_id: Optional[str] = None) -> List[Assistant]:
-        """Get all assistants, optionally filtered by category
+    async def list_all(self, category_id: Optional[str] = None, tenant_id: Optional[str] = None) -> List[Assistant]:
+        """Get all assistants, optionally filtered by category and tenant
 
         Args:
             category_id: Optional UUID of the category to filter by
+            tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
 
         Returns:
             List of Assistant objects
@@ -67,6 +68,11 @@ class AssistantService:
                 # Invalid UUID, return empty list
                 return []
 
+        if tenant_id is not None:
+            query = query.where(Assistant.tenant_id == tenant_id)
+        else:
+            query = query.where(Assistant.tenant_id.is_(None))
+
         query = query.order_by(desc(Assistant.created_at))
         result = await self.session.execute(query)
 
@@ -78,7 +84,8 @@ class AssistantService:
         cursor: Optional[str] = None,
         limit: int = 10,
         category_id: Optional[str] = None,
-        search: Optional[str] = None
+        search: Optional[str] = None,
+        tenant_id: Optional[str] = None
     ) -> Dict[str, Any]:
         """List assistants with cursor-based pagination
 
@@ -87,6 +94,7 @@ class AssistantService:
             limit: Items per page
             category_id: Filter by category ID
             search: Search in name, profession, and description
+            tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
 
         Returns:
             Dictionary with assistants, next_cursor, and has_more
@@ -111,6 +119,11 @@ class AssistantService:
                 (Assistant.profession.ilike(search_pattern)) |
                 (Assistant.description.ilike(search_pattern))
             )
+
+        if tenant_id is not None:
+            query = query.where(Assistant.tenant_id == tenant_id)
+        else:
+            query = query.where(Assistant.tenant_id.is_(None))
 
         # Parse cursor
         cursor_data = None

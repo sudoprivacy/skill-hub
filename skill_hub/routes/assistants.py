@@ -32,11 +32,13 @@ async def list_assistants_cursor():
     * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
     * `query` (str, 可选): 用于匹配助手名称或描述的搜索关键字。
     * `category_id` (str, 可选): 用于过滤助手列表的分类 ID。
+    * `tenant_id` (str, 可选): 租户ID，用于过滤特定租户的助手。如果不传则只返回公共(无租户)的助手。
     """
     cursor = request.args.get("cursor", None)
     limit = request.args.get("limit", 10, type=int)
     query = request.args.get("query", "")
     category_id = request.args.get("category_id", "")
+    tenant_id = request.args.get("tenant_id", None)
 
     async with get_session() as session:
         assistant_service = AssistantService(session)
@@ -44,7 +46,8 @@ async def list_assistants_cursor():
             cursor=cursor,
             limit=limit,
             search=query if query else None,
-            category_id=category_id if category_id else None
+            category_id=category_id if category_id else None,
+            tenant_id=tenant_id
         )
 
         assistants_data = [a.to_dict() for a in result["assistants"]]
