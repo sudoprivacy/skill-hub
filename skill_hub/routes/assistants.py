@@ -79,7 +79,25 @@ async def get_assistant(assistant_id: str):
 @assistants_router.route("", methods=["POST"])
 @token_required
 async def create_assistant():
-    """Create a new assistant"""
+    """
+    # 创建数字助手
+
+    创建一个新的数字助手，支持上传提示词文件、头像和源文件。
+
+    ## 表单数据 (Form Data)
+
+    * `name` (str, 必填): 助手名称。
+    * `profession` (str, 必填): 助手职业/角色。
+    * `description` (str, 可选): 助手描述。
+    * `defaultInitPrompt` 或 `default_init_prompt` (str, 可选): 默认的初始化提示词。
+    * `tenantId` 或 `tenant_id` (str, 可选): 租户ID。
+    * `sortOrder` 或 `sort_order` (int, 可选): 排序顺序，默认为0。
+    * `categories` (str 或 list, 可选): 助手分类。可以是 JSON 字符串、逗号分隔的字符串或列表。
+    * `skills` (str 或 list, 可选): 助手技能。可以是 JSON 字符串、逗号分隔的字符串或列表。
+    * `prompt_file` (file, 可选): Markdown 格式的提示词文件 (.md)。
+    * `avatar` (file, 可选): PNG 格式的头像文件 (.png)。
+    * `source_url` (file, 可选): ZIP 格式的源文件压缩包 (.zip)。
+    """
     form_data = await request.form
     files = await request.files
 
