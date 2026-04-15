@@ -84,6 +84,7 @@ class AssistantService:
         cursor: Optional[str] = None,
         limit: int = 10,
         category_id: Optional[str] = None,
+        category: Optional[str] = None,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None
     ) -> Dict[str, Any]:
@@ -93,6 +94,7 @@ class AssistantService:
             cursor: Cursor string (base64 encoded datetime or id)
             limit: Items per page
             category_id: Filter by category ID
+            category: Filter by category name in categories array
             search: Search in name, profession, and description
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
 
@@ -111,6 +113,9 @@ class AssistantService:
                 query = query.where(Assistant.category_id == cat_uuid)
             except ValueError:
                 return {"assistants": [], "next_cursor": None, "has_more": False}
+
+        if category:
+            query = query.where(Assistant.categories.any(category))
 
         if search:
             search_pattern = f"%{search}%"

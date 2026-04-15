@@ -21,6 +21,7 @@ class Assistant(Base):
         category_id: Reference to the category
         tenant_id: Tenant ID
         sort_order: Sort order for display priority
+        categories: Array of category names or IDs
         skills: Array of associated skill IDs
         created_at: Creation time
         updated_at: Last update time
@@ -101,6 +102,12 @@ class Assistant(Base):
         comment="Sort order for display priority"
     )
 
+    categories = Column(
+        ARRAY(String),
+        nullable=True,
+        comment="Array of category names or IDs"
+    )
+
     skills = Column(
         ARRAY(UUID(as_uuid=True)),
         nullable=True,
@@ -140,6 +147,7 @@ class Assistant(Base):
             "categoryId": str(self.category_id) if self.category_id else None,
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,
+            "categories": self.categories,
             "skills": [str(s) for s in self.skills] if self.skills else [],
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
@@ -194,6 +202,9 @@ class Assistant(Base):
             assistant.sort_order = data["sortOrder"]
         elif "sort_order" in data:
             assistant.sort_order = data["sort_order"]
+
+        if "categories" in data:
+            assistant.categories = data["categories"]
 
         if "skills" in data:
             assistant.skills = [uuid.UUID(s) if isinstance(s, str) else s for s in data["skills"]]
