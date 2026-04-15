@@ -196,6 +196,11 @@ class AssistantService:
         for assistant in assistants:
             # Clone to avoid modifying original SQLAlchemy object state
             ast_dict = {c.name: getattr(assistant, c.name) for c in assistant.__table__.columns}
+
+            # Make sure we're getting the list of skills correctly mapped to our Pydantic model response
+            if 'skills' in ast_dict and ast_dict['skills']:
+                ast_dict['skills'] = [str(s) for s in ast_dict['skills']]
+
             cloned = Assistant(**ast_dict)
 
             if cloned.avatar and not cloned.avatar.startswith('http'):
