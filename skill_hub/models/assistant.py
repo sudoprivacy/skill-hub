@@ -18,9 +18,9 @@ class Assistant(Base):
         prompt_file: Path/URL to the prompt md file
         avatar: URL to the avatar
         default_init_prompt: Default initial prompt text
-        category_id: Reference to the category
         tenant_id: Tenant ID
         sort_order: Sort order for display priority
+        categories: Array of category names or IDs
         skills: Array of associated skill IDs
         created_at: Creation time
         updated_at: Last update time
@@ -79,14 +79,6 @@ class Assistant(Base):
         comment="Default initial prompt text"
     )
 
-    category_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("categories.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-        comment="Reference to the category (must be type 1)"
-    )
-
     tenant_id = Column(
         String(255),
         nullable=True,
@@ -99,6 +91,12 @@ class Assistant(Base):
         default=0,
         nullable=False,
         comment="Sort order for display priority"
+    )
+
+    categories = Column(
+        ARRAY(String),
+        nullable=True,
+        comment="Array of category names or IDs"
     )
 
     skills = Column(
@@ -137,9 +135,9 @@ class Assistant(Base):
             "avatar": self.avatar,
             "sourceUrl": self.source_url,
             "defaultInitPrompt": self.default_init_prompt,
-            "categoryId": str(self.category_id) if self.category_id else None,
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,
+            "categories": self.categories,
             "skills": [str(s) for s in self.skills] if self.skills else [],
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
@@ -180,11 +178,6 @@ class Assistant(Base):
         elif "default_init_prompt" in data:
             assistant.default_init_prompt = data["default_init_prompt"]
 
-        if "categoryId" in data and data["categoryId"]:
-            assistant.category_id = uuid.UUID(data["categoryId"]) if isinstance(data["categoryId"], str) else data["categoryId"]
-        elif "category_id" in data and data["category_id"]:
-            assistant.category_id = uuid.UUID(data["category_id"]) if isinstance(data["category_id"], str) else data["category_id"]
-
         if "tenantId" in data:
             assistant.tenant_id = data["tenantId"]
         elif "tenant_id" in data:
@@ -194,6 +187,9 @@ class Assistant(Base):
             assistant.sort_order = data["sortOrder"]
         elif "sort_order" in data:
             assistant.sort_order = data["sort_order"]
+
+        if "categories" in data:
+            assistant.categories = data["categories"]
 
         if "skills" in data:
             assistant.skills = [uuid.UUID(s) if isinstance(s, str) else s for s in data["skills"]]
