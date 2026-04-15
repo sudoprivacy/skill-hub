@@ -18,7 +18,6 @@ class Assistant(Base):
         prompt_file: Path/URL to the prompt md file
         avatar: URL to the avatar
         default_init_prompt: Default initial prompt text
-        category_id: Reference to the category
         tenant_id: Tenant ID
         sort_order: Sort order for display priority
         categories: Array of category names or IDs
@@ -80,14 +79,6 @@ class Assistant(Base):
         comment="Default initial prompt text"
     )
 
-    category_id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("categories.id", ondelete="SET NULL"),
-        nullable=True,
-        index=True,
-        comment="Reference to the category (must be type 1)"
-    )
-
     tenant_id = Column(
         String(255),
         nullable=True,
@@ -144,7 +135,6 @@ class Assistant(Base):
             "avatar": self.avatar,
             "sourceUrl": self.source_url,
             "defaultInitPrompt": self.default_init_prompt,
-            "categoryId": str(self.category_id) if self.category_id else None,
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,
             "categories": self.categories,
@@ -187,11 +177,6 @@ class Assistant(Base):
             assistant.default_init_prompt = data["defaultInitPrompt"]
         elif "default_init_prompt" in data:
             assistant.default_init_prompt = data["default_init_prompt"]
-
-        if "categoryId" in data and data["categoryId"]:
-            assistant.category_id = uuid.UUID(data["categoryId"]) if isinstance(data["categoryId"], str) else data["categoryId"]
-        elif "category_id" in data and data["category_id"]:
-            assistant.category_id = uuid.UUID(data["category_id"]) if isinstance(data["category_id"], str) else data["category_id"]
 
         if "tenantId" in data:
             assistant.tenant_id = data["tenantId"]

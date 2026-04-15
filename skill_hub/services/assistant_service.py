@@ -48,25 +48,16 @@ class AssistantService:
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
         
-    async def list_all(self, category_id: Optional[str] = None, tenant_id: Optional[str] = None) -> List[Assistant]:
-        """Get all assistants, optionally filtered by category and tenant
+    async def list_all(self, tenant_id: Optional[str] = None) -> List[Assistant]:
+        """Get all assistants, optionally filtered by tenant
 
         Args:
-            category_id: Optional UUID of the category to filter by
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
 
         Returns:
             List of Assistant objects
         """
         query = select(Assistant)
-
-        if category_id is not None:
-            try:
-                cat_uuid = uuid.UUID(category_id)
-                query = query.where(Assistant.category_id == cat_uuid)
-            except ValueError:
-                # Invalid UUID, return empty list
-                return []
 
         if tenant_id is not None:
             query = query.where(Assistant.tenant_id == tenant_id)
@@ -83,7 +74,6 @@ class AssistantService:
         self,
         cursor: Optional[str] = None,
         limit: int = 10,
-        category_id: Optional[str] = None,
         category: Optional[str] = None,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None
@@ -93,7 +83,6 @@ class AssistantService:
         Args:
             cursor: Cursor string (base64 encoded datetime or id)
             limit: Items per page
-            category_id: Filter by category ID
             category: Filter by category name in categories array
             search: Search in name, profession, and description
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
@@ -106,13 +95,6 @@ class AssistantService:
         import sqlalchemy
 
         query = select(Assistant)
-
-        if category_id:
-            try:
-                cat_uuid = uuid.UUID(category_id)
-                query = query.where(Assistant.category_id == cat_uuid)
-            except ValueError:
-                return {"assistants": [], "next_cursor": None, "has_more": False}
 
         if category:
             query = query.where(Assistant.categories.any(category))
