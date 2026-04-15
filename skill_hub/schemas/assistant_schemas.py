@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any, Tuple, List
+import json
 
 @dataclass
 class AssistantCreateRequest:
@@ -13,6 +14,7 @@ class AssistantCreateRequest:
     category_id: Optional[str] = None
     tenant_id: Optional[str] = None
     sort_order: Optional[int] = 0
+    skills: Optional[List[str]] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AssistantCreateRequest":
@@ -26,6 +28,19 @@ class AssistantCreateRequest:
             # Return None if the value is an empty string
             return val if val != "" else None
 
+        # Parse skills array
+        skills_raw = _get_val("skills")
+        skills_parsed = None
+        if skills_raw is not None:
+            if isinstance(skills_raw, list):
+                skills_parsed = skills_raw
+            elif isinstance(skills_raw, str):
+                try:
+                    skills_parsed = json.loads(skills_raw)
+                except json.JSONDecodeError:
+                    # Fallback to comma separated string if someone passed that
+                    skills_parsed = [s.strip() for s in skills_raw.split(',') if s.strip()]
+
         return cls(
             name=data.get("name", ""),
             profession=data.get("profession", ""),
@@ -36,7 +51,8 @@ class AssistantCreateRequest:
             default_init_prompt=_get_val("defaultInitPrompt", "default_init_prompt"),
             category_id=_get_val("categoryId", "category_id"),
             tenant_id=_get_val("tenantId", "tenant_id"),
-            sort_order=int(_get_val("sortOrder", "sort_order")) if _get_val("sortOrder", "sort_order") is not None else 0
+            sort_order=int(_get_val("sortOrder", "sort_order")) if _get_val("sortOrder", "sort_order") is not None else 0,
+            skills=skills_parsed
         )
         
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -79,6 +95,9 @@ class AssistantCreateRequest:
         if self.sort_order is not None:
             data["sort_order"] = self.sort_order
 
+        if self.skills is not None:
+            data["skills"] = self.skills
+
         return data
 
 @dataclass
@@ -93,9 +112,21 @@ class AssistantUpdateRequest:
     category_id: Optional[str] = None
     tenant_id: Optional[str] = None
     sort_order: Optional[int] = None
+    skills: Optional[List[str]] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AssistantUpdateRequest":
+        skills_raw = data.get("skills")
+        skills_parsed = None
+        if skills_raw is not None:
+            if isinstance(skills_raw, list):
+                skills_parsed = skills_raw
+            elif isinstance(skills_raw, str):
+                try:
+                    skills_parsed = json.loads(skills_raw)
+                except json.JSONDecodeError:
+                    skills_parsed = [s.strip() for s in skills_raw.split(',') if s.strip()]
+
         return cls(
             name=data.get("name"),
             profession=data.get("profession"),
@@ -106,14 +137,15 @@ class AssistantUpdateRequest:
             default_init_prompt=data.get("defaultInitPrompt") or data.get("default_init_prompt"),
             category_id=data.get("categoryId") or data.get("category_id"),
             tenant_id=data.get("tenantId") or data.get("tenant_id"),
-            sort_order=int(data.get("sortOrder")) if data.get("sortOrder") is not None else (int(data.get("sort_order")) if data.get("sort_order") is not None else None)
+            sort_order=int(data.get("sortOrder")) if data.get("sortOrder") is not None else (int(data.get("sort_order")) if data.get("sort_order") is not None else None),
+            skills=skills_parsed
         )
-        
+
     def validate(self) -> Tuple[bool, Optional[str]]:
         # Ensure at least one field is provided for update
         fields = [
             self.name, self.profession, self.description,
-            self.prompt_file, self.avatar, self.source_url, self.default_init_prompt, self.category_id, self.tenant_id, self.sort_order
+            self.prompt_file, self.avatar, self.source_url, self.default_init_prompt, self.category_id, self.tenant_id, self.sort_order, self.skills
         ]
         
         if all(field is None for field in fields):
@@ -160,5 +192,8 @@ class AssistantUpdateRequest:
 
         if self.sort_order is not None:
             data["sort_order"] = self.sort_order
+
+        if self.skills is not None:
+            data["skills"] = self.skills
 
         return data
