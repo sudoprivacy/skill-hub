@@ -40,8 +40,8 @@ def map_request(f):
 async def list_skills_cursor():
     """
     # 获取技能列表 (游标分页)
-    
-    获取支持游标分页和过滤的技能列表。
+
+    获取支持游标分页和过滤的技能列表。默认只返回已上线 (status=1) 的技能。
     适用于无限滚动/加载更多的实现。
     
     ## 查询参数 (Query Parameters)
@@ -117,8 +117,8 @@ async def list_skills_cursor():
 async def get_skill(skill_id: str):
     """
     # 获取技能详情
-    
-    获取指定技能的详细信息及其所有可用版本。
+
+    获取指定技能的详细信息及其所有可用版本。默认返回的通常是已上线的技能。
     
     ## 路径参数 (Path Parameters)
     
@@ -145,6 +145,7 @@ async def get_skill(skill_id: str):
                 "emoji": "string",
                 "homepage": "string",
                 "sort_order": "int",
+                "status": "int",
                 "icon": "string",
                 "author_id": "string",
                 "is_active": true,
@@ -226,7 +227,8 @@ async def add_skill(skill: SkillCreateRequest):
     * `changelog` (str, 可选): 该版本的更新日志。
     * `author_id` (str, 可选): 作者 ID。
     * `sort_order` (int, 可选): 排序权重。
-    
+    * `status` (int, 可选): 技能状态，0表示审核中，1表示已上线。默认为0。
+
     ## 文件上传 (File Uploads)
     
     * `skill_file` (File, 必填): 包含技能代码的 .zip 文件。
@@ -253,6 +255,7 @@ async def add_skill(skill: SkillCreateRequest):
                 "emoji": "string",
                 "homepage": "string",
                 "sort_order": "int",
+                "status": "int",
                 "icon": "string",
                 "author_id": "string",
                 "is_active": true,

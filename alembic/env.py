@@ -39,8 +39,11 @@ def get_url():
     # Try to get from environment first
     database_url = os.getenv("SKILL_HUB_DATABASE_URL")
     if database_url:
+        # Convert asyncpg URL to psycopg2 for Alembic if needed
+        if database_url.startswith("postgresql+asyncpg://"):
+            database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
         return database_url
-    
+
     # Fall back to config file
     return config.get_main_option("sqlalchemy.url")
 

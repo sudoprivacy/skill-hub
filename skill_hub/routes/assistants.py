@@ -92,6 +92,7 @@ async def create_assistant():
     * `defaultInitPrompt` 或 `default_init_prompt` (str, 可选): 默认的初始化提示词。
     * `tenantId` 或 `tenant_id` (str, 可选): 租户ID。
     * `sortOrder` 或 `sort_order` (int, 可选): 排序顺序，默认为0。
+    * `status` (int, 可选): 助手状态，0表示审核中，1表示已发布。默认为0。
     * `categories` (str 或 list, 可选): 助手分类。可以是 JSON 字符串、逗号分隔的字符串或列表。
     * `skills` (str 或 list, 可选): 助手技能。可以是 JSON 字符串、逗号分隔的字符串或列表。
     * `prompt_file` (file, 可选): Markdown 格式的提示词文件 (.md)。

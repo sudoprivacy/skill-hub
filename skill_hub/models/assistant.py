@@ -99,6 +99,13 @@ class Assistant(Base):
         comment="Array of category names or IDs"
     )
 
+    status = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Assistant status (0: pending review, 1: active/approved, other values for specific states)"
+    )
+
     skills = Column(
         ARRAY(UUID(as_uuid=True)),
         nullable=True,
@@ -138,6 +145,7 @@ class Assistant(Base):
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,
             "categories": self.categories,
+            "status": self.status,
             "skills": [str(s) for s in self.skills] if self.skills else [],
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
@@ -185,8 +193,11 @@ class Assistant(Base):
 
         if "sortOrder" in data:
             assistant.sort_order = data["sortOrder"]
-        elif "sort_order" in data:
+        if "sort_order" in data:
             assistant.sort_order = data["sort_order"]
+
+        if "status" in data:
+            assistant.status = data["status"]
 
         if "categories" in data:
             assistant.categories = data["categories"]
