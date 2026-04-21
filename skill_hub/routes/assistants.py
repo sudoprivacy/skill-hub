@@ -276,3 +276,30 @@ async def delete_assistant(assistant_id: str):
     return success_response(
         message="Assistant deleted successfully"
     )
+
+@assistants_router.route("/<assistant_id>/approve", methods=["POST"])
+@token_required
+async def approve_assistant(assistant_id: str):
+    """
+    # 审批通过数字助手
+
+    将处于审核中的数字助手状态更新为已上线 (status=1)。
+
+    ## 路径参数 (Path Parameters)
+
+    * `assistant_id` (str): 要审批的数字助手的唯一标识符 (UUID)。
+    """
+    async with get_session() as session:
+        assistant_service = AssistantService(session)
+
+        # 尝试更新状态
+        assistant = await assistant_service.update(assistant_id, {"status": 1})
+        if not assistant:
+            raise NotFoundException(message="Assistant not found")
+
+        assistant_dict = assistant.to_dict()
+
+    return success_response(
+        data=assistant_dict,
+        message="Assistant approved successfully"
+    )

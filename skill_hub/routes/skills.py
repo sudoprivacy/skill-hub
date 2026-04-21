@@ -396,3 +396,32 @@ async def add_skill(skill: SkillCreateRequest):
         },
         message="Skill added successfully"
     )
+
+@skills_router.route("/<skill_id>/approve", methods=["POST"])
+@token_required
+async def approve_skill(skill_id: str):
+    """
+    # 审批通过技能
+
+    将处于审核中的技能状态更新为已上线 (status=1)。
+
+    ## 路径参数 (Path Parameters)
+
+    * `skill_id` (str): 要审批的技能的唯一标识符 (UUID)。
+    """
+    from skill_hub.api.exceptions import NotFoundException
+
+    async with get_session() as session:
+        skill_service = SkillService(session)
+
+        # 尝试更新状态
+        skill = await skill_service.update(skill_id, {"status": 1})
+        if not skill:
+            raise NotFoundException(message="Skill not found")
+
+        skill_dict = skill.to_dict()
+
+    return success_response(
+        data=skill_dict,
+        message="Skill approved successfully"
+    )
