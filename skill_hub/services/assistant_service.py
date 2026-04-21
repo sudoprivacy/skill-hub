@@ -64,6 +64,8 @@ class AssistantService:
         else:
             query = query.where(Assistant.tenant_id.is_(None))
 
+        query = query.where(Assistant.status == 1)
+
         query = query.order_by(desc(Assistant.sort_order), desc(Assistant.created_at))
         result = await self.session.execute(query)
 
@@ -111,6 +113,8 @@ class AssistantService:
             query = query.where(Assistant.tenant_id == tenant_id)
         else:
             query = query.where(Assistant.tenant_id.is_(None))
+
+        query = query.where(Assistant.status == 1)
 
         # Parse cursor
         cursor_data = None

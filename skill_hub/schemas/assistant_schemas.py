@@ -15,6 +15,7 @@ class AssistantCreateRequest:
     sort_order: Optional[int] = 0
     categories: Optional[List[str]] = None
     skills: Optional[List[str]] = None
+    status: Optional[int] = 0
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AssistantCreateRequest":
@@ -63,6 +64,7 @@ class AssistantCreateRequest:
             default_init_prompt=_get_val("defaultInitPrompt", "default_init_prompt"),
             tenant_id=_get_val("tenantId", "tenant_id"),
             sort_order=int(_get_val("sortOrder", "sort_order")) if _get_val("sortOrder", "sort_order") is not None else 0,
+            status=int(_get_val("status")) if _get_val("status") is not None else 0,
             categories=categories_parsed,
             skills=skills_parsed
         )
@@ -107,6 +109,9 @@ class AssistantCreateRequest:
         if self.categories is not None:
             data["categories"] = self.categories
 
+        if self.status is not None:
+            data["status"] = self.status
+
         if self.skills is not None:
             data["skills"] = self.skills
 
@@ -125,6 +130,7 @@ class AssistantUpdateRequest:
     sort_order: Optional[int] = None
     categories: Optional[List[str]] = None
     skills: Optional[List[str]] = None
+    status: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AssistantUpdateRequest":
@@ -160,6 +166,7 @@ class AssistantUpdateRequest:
             default_init_prompt=data.get("defaultInitPrompt") or data.get("default_init_prompt"),
             tenant_id=data.get("tenantId") or data.get("tenant_id"),
             sort_order=int(data.get("sortOrder")) if data.get("sortOrder") is not None else (int(data.get("sort_order")) if data.get("sort_order") is not None else None),
+            status=int(data.get("status")) if data.get("status") is not None else None,
             categories=categories_parsed,
             skills=skills_parsed
         )
@@ -168,7 +175,7 @@ class AssistantUpdateRequest:
         # Ensure at least one field is provided for update
         fields = [
             self.name, self.profession, self.description,
-            self.prompt_file, self.avatar, self.source_url, self.default_init_prompt, self.tenant_id, self.sort_order, self.categories, self.skills
+            self.prompt_file, self.avatar, self.source_url, self.default_init_prompt, self.tenant_id, self.sort_order, self.categories, self.skills, self.status
         ]
         
         if all(field is None for field in fields):
@@ -218,6 +225,9 @@ class AssistantUpdateRequest:
 
         if self.categories is not None:
             data["categories"] = self.categories
+
+        if self.status is not None:
+            data["status"] = self.status
 
         if self.skills is not None:
             data["skills"] = self.skills
