@@ -148,6 +148,7 @@ async def get_skill(skill_id: str):
                 "status": "int",
                 "icon": "string",
                 "author_id": "string",
+                "tenant_id": "string",
                 "is_active": true,
                 "created_at": "datetime",
                 "updated_at": "datetime"
@@ -226,6 +227,7 @@ async def add_skill(skill: SkillCreateRequest):
     * `homepage` (str, 可选): 技能的主页链接。
     * `changelog` (str, 可选): 该版本的更新日志。
     * `author_id` (str, 可选): 作者 ID。
+    * `tenant_id` (str, 可选): 租户 ID。用于区分不同租户的私有技能，不传则默认为公共技能。
     * `sort_order` (int, 可选): 排序权重。
     * `status` (int, 可选): 技能状态，0表示审核中，1表示已上线。默认为0。
 
@@ -258,6 +260,7 @@ async def add_skill(skill: SkillCreateRequest):
                 "status": "int",
                 "icon": "string",
                 "author_id": "string",
+                "tenant_id": "string",
                 "is_active": true,
                 "created_at": "datetime",
                 "updated_at": "datetime"
