@@ -495,3 +495,27 @@ async def approve_skill(skill_id: str):
         data=skill_dict,
         message="Skill approved successfully"
     )
+
+@skills_router.route("/<skill_id>", methods=["DELETE"])
+@token_required
+async def delete_skill(skill_id: str):
+    """
+    # 删除技能
+
+    根据 ID 删除指定技能。
+
+    ## 路径参数 (Path Parameters)
+
+    * `skill_id` (str): 要删除的技能的唯一标识符 (UUID)。
+    """
+    from skill_hub.api.exceptions import NotFoundException
+
+    async with get_session() as session:
+        skill_service = SkillService(session)
+        deleted = await skill_service.delete(skill_id)
+        if not deleted:
+            raise NotFoundException(message="Skill not found")
+
+    return success_response(
+        message="Skill deleted successfully"
+    )
