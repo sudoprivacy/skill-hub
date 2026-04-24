@@ -112,6 +112,73 @@ async def list_skills_cursor():
         message="Skills retrieved successfully"
     )
 
+@skills_router.route("/admin/cursor", methods=["GET"])
+@token_required
+async def list_skills_admin_cursor():
+    """
+    # 获取技能列表 (管理员用)
+
+    获取支持游标分页和过滤的技能列表，返回所有状态的技能。
+    适用于后台管理系统的实现。
+
+    ## 查询参数 (Query Parameters)
+
+    * `cursor` (str, 可选): 下一页结果的游标。
+    * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
+    * `query` (str, 可选): 用于匹配技能名称或描述的搜索关键字。
+    * `categories` (str, 可选): 用于过滤技能列表的技能分类。
+    * `status` (int, 可选): 过滤技能状态，默认不传为全部状态。
+
+    ## 响应 (Returns)
+
+    返回包含以下结构的 JSON 响应：
+
+    ```json
+    {
+        "status": "success",
+        "message": "Skills retrieved successfully",
+        "data": {
+            "skills": [
+                {
+                    "id": "uuid",
+                    ...
+                }
+            ],
+            "next_cursor": "string or null",
+            "has_more": true
+        }
+    }
+    ```
+    """
+    cursor = request.args.get("cursor", None)
+    limit = request.args.get("limit", 10, type=int)
+    query = request.args.get("query", "")
+    categories = request.args.get("categories", "")
+    tenant_id = request.args.get("tenant_id", None)
+    status_arg = request.args.get("status", None)
+    status = int(status_arg) if status_arg is not None else None
+
+    async with get_session() as session:
+        skill_service = SkillService(session)
+        result = await skill_service.list_all_cursor(
+            cursor=cursor,
+            limit=limit,
+            search=query if query else None,
+            categories=categories if categories else None,
+            tenant_id=tenant_id,
+            status=status
+        )
+
+        # Convert objects to dicts for JSON serialization
+        skills_data = [skill.to_dict() for skill in result["skills"]]
+
+        result["skills"] = skills_data
+
+    return success_response(
+        data=result,
+        message="Skills retrieved successfully"
+    )
+
 @skills_router.route("/<skill_id>", methods=["GET"])
 @token_required
 async def get_skill(skill_id: str):

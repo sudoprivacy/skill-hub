@@ -127,7 +127,8 @@ class SkillService:
         categories: Optional[str] = None,
         author_id: Optional[str] = None,
         search: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        status: Optional[int] = 1
     ) -> Dict[str, Any]:
         """List skills with cursor-based pagination
 
@@ -138,6 +139,7 @@ class SkillService:
             author_id: Filter by author ID
             search: Search in name, display_name, and description
             tenant_id: Filter by tenant ID
+            status: Filter by status. None means all statuses. Default is 1 (online).
 
         Returns:
             Dictionary with skills, next_cursor, and has_more
@@ -146,7 +148,9 @@ class SkillService:
         import json
 
         # Build query
-        stmt = select(Skill).options(selectinload(Skill.versions)).where(Skill.status == 1)
+        stmt = select(Skill).options(selectinload(Skill.versions))
+        if status is not None:
+            stmt = stmt.where(Skill.status == status)
 
         if tenant_id is not None:
             stmt = stmt.where(Skill.tenant_id == tenant_id)

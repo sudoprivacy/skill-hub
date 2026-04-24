@@ -78,7 +78,8 @@ class AssistantService:
         limit: int = 10,
         category: Optional[str] = None,
         search: Optional[str] = None,
-        tenant_id: Optional[str] = None
+        tenant_id: Optional[str] = None,
+        status: Optional[int] = 1
     ) -> Dict[str, Any]:
         """List assistants with cursor-based pagination
 
@@ -88,6 +89,7 @@ class AssistantService:
             category: Filter by category name in categories array
             search: Search in name, profession, and description
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
+            status: Filter by status. None means all statuses. Default is 1 (online).
 
         Returns:
             Dictionary with assistants, next_cursor, and has_more
@@ -114,7 +116,8 @@ class AssistantService:
         else:
             query = query.where(Assistant.tenant_id.is_(None))
 
-        query = query.where(Assistant.status == 1)
+        if status is not None:
+            query = query.where(Assistant.status == status)
 
         # Parse cursor
         cursor_data = None
