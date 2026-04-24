@@ -58,6 +58,51 @@ async def list_assistants_cursor():
         message="Assistants retrieved successfully"
     )
 
+@assistants_router.route("/admin/cursor", methods=["GET"])
+@token_required
+async def list_assistants_admin_cursor():
+    """
+    # 获取数字助手列表 (管理员用)
+
+    获取支持游标分页和过滤的数字助手列表，返回所有状态的助手。
+    适用于后台管理系统的实现。
+
+    ## 查询参数 (Query Parameters)
+
+    * `cursor` (str, 可选): 下一页结果的游标。
+    * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
+    * `query` (str, 可选): 用于匹配助手名称或描述的搜索关键字。
+    * `category` (str, 可选): 用于过滤助手列表的分类名称，匹配 categories 数组。
+    * `tenant_id` (str, 可选): 租户ID，用于过滤特定租户的助手。如果不传则只返回公共(无租户)的助手。
+    * `status` (int, 可选): 过滤助手状态，默认不传为全部状态。
+    """
+    cursor = request.args.get("cursor", None)
+    limit = request.args.get("limit", 10, type=int)
+    query = request.args.get("query", "")
+    category = request.args.get("category", "")
+    tenant_id = request.args.get("tenant_id", None)
+    status_arg = request.args.get("status", None)
+    status = int(status_arg) if status_arg is not None else None
+
+    async with get_session() as session:
+        assistant_service = AssistantService(session)
+        result = await assistant_service.list_all_cursor(
+            cursor=cursor,
+            limit=limit,
+            search=query if query else None,
+            category=category if category else None,
+            tenant_id=tenant_id,
+            status=status
+        )
+
+        assistants_data = [a.to_dict() for a in result["assistants"]]
+        result["assistants"] = assistants_data
+
+    return success_response(
+        data=result,
+        message="Assistants retrieved successfully"
+    )
+
 @assistants_router.route("/<assistant_id>", methods=["GET"])
 @token_required
 async def get_assistant(assistant_id: str):
