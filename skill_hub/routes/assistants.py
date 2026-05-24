@@ -271,7 +271,7 @@ async def create_assistant():
     return success_response(
         data=assistant_dict,
         message="Assistant created successfully",
-        status_code=201
+        status_code=200
     )
 
 @assistants_router.route("/<assistant_id>", methods=["PUT"])
