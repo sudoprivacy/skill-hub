@@ -7,17 +7,29 @@ from functools import wraps
 from quart import Blueprint, request, current_app
 
 from skill_hub.api.auth import token_required
-from skill_hub.schemas.skill_schemas import SkillCreateRequest
+from skill_hub.schemas.skill_schemas import SkillCreateRequest, SkillUpdateRequest
 from skill_hub.services.skill_service import SkillService
 from skill_hub.services.skill_version_service import SkillVersionService
 from skill_hub.db.database import get_session
 from skill_hub.utils.object_storage_client import ObjectStorageClient
 from skill_hub.api.responses import success_response
-from skill_hub.api.exceptions import BadRequestException
+from skill_hub.api.exceptions import BadRequestException, NotFoundException
 
 logger = logging.getLogger(__name__)
 
 skills_router = Blueprint("skills", __name__)
+
+_VERSION_UPDATE_FIELDS = {
+    "version",
+    "source_url",
+    "sourceUrl",
+    "checksum",
+    "changelog",
+    "readme_content",
+    "readmeContent",
+    "skill_file",
+    "skillFile",
+}
 
 def map_request(f):
     """Decorator to map HTTP request to SkillCreateRequest object"""
@@ -467,6 +479,92 @@ async def add_skill(skill: SkillCreateRequest):
         message="Skill added successfully"
     )
 
+@skills_router.route("/<skill_id>", methods=["PUT"])
+@token_required
+async def update_skill(skill_id: str):
+    """
+    # 更新技能
+
+    根据技能 ID 更新 skill 表中的非空字段，不更新版本相关信息。
+
+    支持 JSON 或 multipart/form-data。上传 `icon_file` 时会将图标保存到对象存储，
+    并把 `icon` 更新为新的对象 key。
+    """
+    content_type = request.content_type or ""
+    files = await request.files
+
+    if "multipart/form-data" in content_type:
+        raw_data = await request.form
+        data = dict(raw_data)
+    else:
+        data = await request.get_json(silent=True) or {}
+
+    icon_file = files.get("icon_file")
+    if not data and not icon_file:
+        raise BadRequestException(message="Invalid payload")
+
+    for field in _VERSION_UPDATE_FIELDS:
+        data.pop(field, None)
+
+    if icon_file:
+        if not icon_file.filename.endswith(".png"):
+            raise BadRequestException(message="icon_file must be a .png file")
+
+        config = current_app.config.get("APP_CONFIG")
+        upload_dir = getattr(config, "upload_dir", "data/uploads")
+        temp_dir = os.path.join(upload_dir, "temp", skill_id)
+        os.makedirs(temp_dir, exist_ok=True)
+
+        icon_file_path = os.path.join(temp_dir, icon_file.filename)
+        icon_object_key = f"skill-hub/{skill_id}/icon.png"
+
+        try:
+            await icon_file.save(icon_file_path)
+            cos_client = ObjectStorageClient(config)
+            if cos_client.client:
+                cos_client.upload_file(
+                    bucket_name="sudoclaw-1309794936",
+                    local_file_path=icon_file_path,
+                    object_key=icon_object_key
+                )
+                data["icon"] = icon_object_key
+            else:
+                logger.warning("ObjectStorageClient is not initialized")
+                data["icon"] = icon_object_key
+        except Exception as e:
+            logger.error(f"Error uploading skill icon to object storage: {str(e)}")
+            raise BadRequestException(message=f"Failed to upload icon_file: {str(e)}")
+        finally:
+            try:
+                if os.path.exists(icon_file_path):
+                    os.remove(icon_file_path)
+                if os.path.exists(temp_dir):
+                    os.rmdir(temp_dir)
+            except Exception as e:
+                logger.warning(f"Failed to cleanup temp files: {str(e)}")
+
+    try:
+        req = SkillUpdateRequest.from_dict(data)
+    except ValueError as e:
+        raise BadRequestException(message=f"Invalid numeric field: {str(e)}")
+
+    is_valid, error = req.validate()
+    if not is_valid:
+        raise BadRequestException(message=error)
+
+    async with get_session() as session:
+        skill_service = SkillService(session)
+        skill = await skill_service.update(skill_id, req.to_update_data())
+        if not skill:
+            raise NotFoundException(message="Skill not found")
+
+        skill_dict = skill.to_dict()
+
+    return success_response(
+        data=skill_dict,
+        message="Skill updated successfully"
+    )
+
 @skills_router.route("/<skill_id>/approve", methods=["POST"])
 @token_required
 async def approve_skill(skill_id: str):
@@ -479,8 +577,6 @@ async def approve_skill(skill_id: str):
 
     * `skill_id` (str): 要审批的技能的唯一标识符 (UUID)。
     """
-    from skill_hub.api.exceptions import NotFoundException
-
     async with get_session() as session:
         skill_service = SkillService(session)
 
@@ -508,8 +604,6 @@ async def delete_skill(skill_id: str):
 
     * `skill_id` (str): 要删除的技能的唯一标识符 (UUID)。
     """
-    from skill_hub.api.exceptions import NotFoundException
-
     async with get_session() as session:
         skill_service = SkillService(session)
         deleted = await skill_service.delete(skill_id)
