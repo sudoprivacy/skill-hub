@@ -31,6 +31,24 @@ _VERSION_UPDATE_FIELDS = {
     "skillFile",
 }
 
+_ALLOWED_ICON_EXTENSIONS = {".png", ".svg"}
+
+
+def _file_extension(filename: str) -> str:
+    return os.path.splitext(filename or "")[1].lower()
+
+
+def _validate_icon_file(icon_file) -> str:
+    extension = _file_extension(icon_file.filename)
+    if extension not in _ALLOWED_ICON_EXTENSIONS:
+        raise BadRequestException(message="icon_file must be a .png or .svg file")
+    return extension
+
+
+def _icon_object_key(skill_id: str, extension: str) -> str:
+    return f"skill-hub/{skill_id}/icon{extension}"
+
+
 def map_request(f):
     """Decorator to map HTTP request to SkillCreateRequest object"""
     @wraps(f)
@@ -313,7 +331,7 @@ async def add_skill(skill: SkillCreateRequest):
     ## 文件上传 (File Uploads)
     
     * `skill_file` (File, 必填): 包含技能代码的 .zip 文件。
-    * `icon_file` (File, 可选): 技能图标的 .png 文件。
+    * `icon_file` (File, 可选): 技能图标的 .png 或 .svg 文件。
     
     ## 响应 (Returns)
     
@@ -369,19 +387,23 @@ async def add_skill(skill: SkillCreateRequest):
     
     if not skill_file:
         raise BadRequestException(message="skill_file is required")
-    if not skill_file.filename.endswith('.zip'):
+    if _file_extension(skill_file.filename) != ".zip":
         raise BadRequestException(message="skill_file must be a .zip file")
 
-    has_icon = False
+    icon_extension = None
     if icon_file:
-        has_icon = True
-        if not icon_file.filename.endswith('.png'):
-            raise BadRequestException(message="icon_file must be a .png file")
+        icon_extension = _validate_icon_file(icon_file)
 
+    async with get_session() as session:
+        skill_service = SkillService(session)
+        skill_version_service = SkillVersionService(session)
 
+        existing_skill = await skill_service.get_by_name(skill.name, skill.tenant_id)
+        skill_id = str(existing_skill.id) if existing_skill else str(uuid.uuid4())
 
-    # Generate a UUID for the skill
-    skill_id = str(uuid.uuid4())
+        existing_version = await skill_version_service.get_by_skill_and_version(skill_id, skill.version)
+        if existing_version:
+            raise BadRequestException(message=f"Version {skill.version} already exists for skill {skill.name}")
     
     config = current_app.config.get("APP_CONFIG")
     upload_dir = getattr(config, "upload_dir", "data/uploads")
@@ -391,19 +413,19 @@ async def add_skill(skill: SkillCreateRequest):
     os.makedirs(temp_dir, exist_ok=True)
     
     skill_file_path = os.path.join(temp_dir, skill_file.filename)
-    if has_icon:
+    icon_file_path = None
+    icon_object_key = None
+    if icon_extension:
         icon_file_path = os.path.join(temp_dir, icon_file.filename)
     
     await skill_file.save(skill_file_path)
 
-    if has_icon:
+    if icon_file_path:
         await icon_file.save(icon_file_path)
 
     skill_object_key = f"skill-hub/{skill_id}/{skill_file.filename}"
-    if has_icon:
-        icon_object_key = f"skill-hub/{skill_id}/icon.png"
-
-
+    if icon_extension:
+        icon_object_key = _icon_object_key(skill_id, icon_extension)
     
     # Upload to Object Storage
     try:
@@ -415,7 +437,7 @@ async def add_skill(skill: SkillCreateRequest):
                 local_file_path=skill_file_path,
                 object_key=skill_object_key
             )
-            if has_icon:
+            if icon_file_path and icon_object_key:
                 cos_client.upload_file(
                     bucket_name=bucket_name,
                     local_file_path=icon_file_path,
@@ -430,7 +452,7 @@ async def add_skill(skill: SkillCreateRequest):
     # Delete temp files
     try:
         os.remove(skill_file_path)
-        if has_icon:
+        if icon_file_path:
             os.remove(icon_file_path)
         os.rmdir(temp_dir)
     except Exception as e:
@@ -443,7 +465,7 @@ async def add_skill(skill: SkillCreateRequest):
         author_id = ""
         skill_data = skill.to_skill_data(author_id)
 
-        if has_icon:
+        if icon_object_key:
             skill_data["icon"] = icon_object_key
 
         # Create or update skill
@@ -455,11 +477,8 @@ async def add_skill(skill: SkillCreateRequest):
         else:
             db_skill = existing_skill
             skill_id = str(db_skill.id)
-
-        # Check if version exists
-        existing_version = await skill_version_service.get_by_skill_and_version(skill_id, skill.version)
-        if existing_version:
-            raise BadRequestException(message=f"Version {skill.version} already exists for skill {skill.name}")
+            if icon_object_key:
+                db_skill = await skill_service.update(skill_id, {"icon": icon_object_key})
 
         checksum = ""
         
@@ -487,7 +506,7 @@ async def update_skill(skill_id: str):
 
     根据技能 ID 更新 skill 表中的非空字段，不更新版本相关信息。
 
-    支持 JSON 或 multipart/form-data。上传 `icon_file` 时会将图标保存到对象存储，
+    支持 JSON 或 multipart/form-data。上传 `.png` 或 `.svg` 格式的 `icon_file` 时会将图标保存到对象存储，
     并把 `icon` 更新为新的对象 key。
     """
     content_type = request.content_type or ""
@@ -507,8 +526,7 @@ async def update_skill(skill_id: str):
         data.pop(field, None)
 
     if icon_file:
-        if not icon_file.filename.endswith(".png"):
-            raise BadRequestException(message="icon_file must be a .png file")
+        icon_extension = _validate_icon_file(icon_file)
 
         config = current_app.config.get("APP_CONFIG")
         upload_dir = getattr(config, "upload_dir", "data/uploads")
@@ -516,7 +534,7 @@ async def update_skill(skill_id: str):
         os.makedirs(temp_dir, exist_ok=True)
 
         icon_file_path = os.path.join(temp_dir, icon_file.filename)
-        icon_object_key = f"skill-hub/{skill_id}/icon.png"
+        icon_object_key = _icon_object_key(skill_id, icon_extension)
 
         try:
             await icon_file.save(icon_file_path)
