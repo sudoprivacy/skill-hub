@@ -185,7 +185,7 @@ class AssistantService:
         import copy
 
         formatted_assistants = []
-        base_url = 'https://sudoclaw-1309794936.cos.ap-beijing.myqcloud.com'
+        base_url = 'https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com'
 
         for assistant in assistants:
             # Clone to avoid modifying original SQLAlchemy object state
