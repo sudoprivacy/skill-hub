@@ -200,7 +200,7 @@ class Skill(Base):
                 latest = sorted_versions[0]
                 result["latestVersion"] = {
                     "version": latest.version,
-                    "source_url": "https://sudoclaw-1309794936.cos.ap-beijing.myqcloud.com/" + latest.source_url if latest.source_url and not latest.source_url.startswith('http') else latest.source_url,
+                    "source_url": "https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com/" + latest.source_url if latest.source_url and not latest.source_url.startswith('http') else latest.source_url,
                     "checksum": latest.checksum,
                     "changelog": latest.changelog,
                     "created_at": latest.created_at.isoformat() if latest.created_at else None
