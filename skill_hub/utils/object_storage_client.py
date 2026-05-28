@@ -178,7 +178,7 @@ if __name__ == "__main__":
         # Create a dummy file for testing
         test_file_path = "./default.png"
 
-        bucket_name = "sudoclaw-1309794936"
+        bucket_name = "sudoworkhub-1309794936"
         object_key = "skill-hub/tmp/default.png"
 
         logger.info(f"Testing upload_file to bucket {bucket_name} with key {object_key}")
