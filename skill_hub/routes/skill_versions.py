@@ -67,7 +67,7 @@ async def create_skill_version():
 
             # 4. Upload zip to COS
             cos_client = ObjectStorageClient(config)
-            bucket_name = "sudoclaw-1309794936"
+            bucket_name = "sudoworkhub-1309794936"
 
             # Use original skill_id for path matching existing pattern
             skill_object_key = f"skill-hub/{skill_id}/{version}/{skill_file.filename}"
