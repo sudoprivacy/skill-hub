@@ -37,6 +37,25 @@ async def list_categories():
         message="Categories retrieved successfully"
     )
 
+
+@categories_router.route("/admin", methods=["GET"])
+@token_required
+async def list_categories_admin():
+    """Get full category records for the admin UI."""
+    type_arg = request.args.get("type")
+    type_filter = int(type_arg) if type_arg not in (None, "") else None
+
+    async with get_session() as session:
+        category_service = CategoryService(session)
+        categories = await category_service.list_all(type_filter=type_filter)
+        categories_data = [category.to_dict() for category in categories]
+
+    return success_response(
+        data=categories_data,
+        message="Categories retrieved successfully"
+    )
+
+
 @categories_router.route("/<category_id>", methods=["GET"])
 @token_required
 async def get_category(category_id: str):
@@ -81,3 +100,49 @@ async def create_category():
         message="Category created successfully",
         status_code=201
     )
+
+
+@categories_router.route("/<category_id>", methods=["PUT"])
+@token_required
+async def update_category(category_id: str):
+    """Update a category by ID."""
+    data = await request.get_json(silent=True)
+    if not data:
+        raise BadRequestException(message="Invalid JSON payload")
+
+    req = CategoryUpdateRequest.from_dict(data)
+    is_valid, error = req.validate()
+    if not is_valid:
+        raise BadRequestException(message=error)
+
+    async with get_session() as session:
+        category_service = CategoryService(session)
+        if req.name is not None:
+            category_type = req.type if req.type is not None else data.get("type", 0)
+            existing = await category_service.get_by_name_and_type(req.name, category_type)
+            if existing and str(existing.id) != category_id:
+                raise BadRequestException(message="Category name already exists for this type")
+
+        category = await category_service.update(category_id, req.to_update_data())
+        if not category:
+            raise NotFoundException(message="Category not found")
+
+        category_dict = category.to_dict()
+
+    return success_response(
+        data=category_dict,
+        message="Category updated successfully"
+    )
+
+
+@categories_router.route("/<category_id>", methods=["DELETE"])
+@token_required
+async def delete_category(category_id: str):
+    """Delete a category by ID."""
+    async with get_session() as session:
+        category_service = CategoryService(session)
+        deleted = await category_service.delete(category_id)
+        if not deleted:
+            raise NotFoundException(message="Category not found")
+
+    return success_response(message="Category deleted successfully")

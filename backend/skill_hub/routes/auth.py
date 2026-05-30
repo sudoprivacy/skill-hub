@@ -6,6 +6,37 @@ from skill_hub.api.auth import get_token_from_header, verify_token
 
 auth_router = Blueprint("auth", __name__)
 
+
+@auth_router.route("/login", methods=["POST"])
+async def login():
+    """Validate the fixed admin token and return session metadata."""
+    data = await request.get_json(silent=True) or {}
+    token = data.get("token") or data.get("password")
+
+    if not token:
+        return error_response(
+            message="token is required",
+            status_code=400,
+            error_code="BAD_REQUEST",
+        )
+
+    if not verify_token(token):
+        return error_response(
+            message="Invalid token",
+            status_code=401,
+            error_code="UNAUTHORIZED",
+        )
+
+    return success_response(
+        data={
+            "token": token,
+            "tokenType": "Bearer",
+            "authenticated": True,
+        },
+        message="Login successful",
+    )
+
+
 @auth_router.route("/verify", methods=["GET"])
 async def verify():
     """Verify authentication token from header

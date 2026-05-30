@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.6
-
 # =========================
 # Stage 1: builder
 # =========================

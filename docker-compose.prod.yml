@@ -21,5 +21,14 @@ services:
     volumes:
       - skill-hub-data:/app/data
 
+  admin-web:
+    image: ghcr.io/${GITHUB_REPOSITORY:-sudoprivacy/skill-hub-admin}:latest
+    container_name: skill-hub-admin
+    restart: unless-stopped
+    depends_on:
+      - skill-hub
+    ports:
+      - "${SKILL_HUB_ADMIN_PORT:-5173}:80"
+
 volumes:
   skill-hub-data:

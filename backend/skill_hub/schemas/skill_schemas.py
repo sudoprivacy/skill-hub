@@ -22,6 +22,23 @@ class SkillCreateRequest:
 
     @classmethod
     def from_form_data(cls, form_data: Dict[str, Any]) -> "SkillCreateRequest":
+        categories_raw = form_data.getlist("categories") if hasattr(form_data, "getlist") else form_data.get("categories")
+        categories_parsed = None
+        if categories_raw:
+            if isinstance(categories_raw, list):
+                if len(categories_raw) == 1 and isinstance(categories_raw[0], str):
+                    try:
+                        categories_parsed = json.loads(categories_raw[0])
+                    except json.JSONDecodeError:
+                        categories_parsed = [s.strip() for s in categories_raw[0].split(",") if s.strip()]
+                else:
+                    categories_parsed = categories_raw
+            elif isinstance(categories_raw, str):
+                try:
+                    categories_parsed = json.loads(categories_raw)
+                except json.JSONDecodeError:
+                    categories_parsed = [s.strip() for s in categories_raw.split(",") if s.strip()]
+
         return cls(
             name=form_data.get("name", ""),
             display_name=form_data.get("display_name", ""),
@@ -30,7 +47,7 @@ class SkillCreateRequest:
             description=form_data.get("description"),
             core_features=form_data.get("core_features"),
             applicable_scenarios=form_data.get("applicable_scenarios"),
-            categories=form_data.getlist("categories") if hasattr(form_data, "getlist") else form_data.get("categories"),
+            categories=categories_parsed,
             emoji=form_data.get("emoji"),
             homepage=form_data.get("homepage"),
             changelog=form_data.get("changelog"),

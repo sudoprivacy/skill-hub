@@ -110,8 +110,14 @@ class AuthMiddleware:
         # Skip authentication for non-protected routes
         path = request.path
         
-        # Allow openapi docs paths even if they are under protected prefix
-        if path.endswith("/docs") or path.endswith("/openapi.json") or path.endswith("/redoc"):
+        # Allow login and openapi docs paths even if they are under protected prefix
+        if (
+            path.endswith("/auth/login")
+            or path.endswith("/auth/info")
+            or path.endswith("/docs")
+            or path.endswith("/openapi.json")
+            or path.endswith("/redoc")
+        ):
             return None
         
         # Check if the path starts with any protected prefix
