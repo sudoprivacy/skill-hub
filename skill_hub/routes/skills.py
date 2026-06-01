@@ -12,6 +12,11 @@ from skill_hub.services.skill_service import SkillService
 from skill_hub.services.skill_version_service import SkillVersionService
 from skill_hub.db.database import get_session
 from skill_hub.utils.object_storage_client import ObjectStorageClient
+from skill_hub.utils.content_storage import (
+    is_local_mode as is_local_content_mode,
+    store_object as store_content_object,
+    local_path_for as content_local_path,
+)
 from skill_hub.api.responses import success_response
 from skill_hub.api.exceptions import BadRequestException, NotFoundException
 
@@ -64,6 +69,30 @@ def map_request(f):
             
         return await f(skill=skill_request, *args, **kwargs)
     return decorated_function
+
+@skills_router.route("/content/<path:object_key>", methods=["GET"])
+@token_required
+async def download_content(object_key: str):
+    """Serve a locally-stored skill package or icon (local content mode).
+
+    Only active when SKILL_HUB_CONTENT_BASE_URL is configured; otherwise
+    content lives in COS and this route returns 404. `object_key` is the
+    stored key, e.g. `skill-hub/<id>/pkg.zip`.
+    """
+    if not is_local_content_mode():
+        raise NotFoundException(message="Local content storage is not enabled")
+
+    try:
+        abs_path = content_local_path(object_key)
+    except ValueError:
+        raise BadRequestException(message="Invalid content path")
+
+    if not os.path.isfile(abs_path):
+        raise NotFoundException(message=f"Content not found: {object_key}")
+
+    from quart import send_file
+    return await send_file(abs_path, as_attachment=False)
+
 
 @skills_router.route("/cursor", methods=["GET"])
 @token_required
@@ -427,26 +456,32 @@ async def add_skill(skill: SkillCreateRequest):
     if icon_extension:
         icon_object_key = _icon_object_key(skill_id, icon_extension)
     
-    # Upload to Object Storage
+    # Store skill package + icon. In local content mode they go to the local
+    # filesystem (served by this hub); otherwise they are uploaded to COS.
     try:
-        cos_client = ObjectStorageClient(config)
-        if cos_client.client:
-            bucket_name = "sudoworkhub-1309794936"
-            cos_client.upload_file(
-                bucket_name=bucket_name,
-                local_file_path=skill_file_path,
-                object_key=skill_object_key
-            )
+        if is_local_content_mode():
+            store_content_object(skill_file_path, skill_object_key)
             if icon_file_path and icon_object_key:
+                store_content_object(icon_file_path, icon_object_key)
+        else:
+            cos_client = ObjectStorageClient(config)
+            if cos_client.client:
+                bucket_name = "sudoworkhub-1309794936"
                 cos_client.upload_file(
                     bucket_name=bucket_name,
-                    local_file_path=icon_file_path,
-                    object_key=icon_object_key
+                    local_file_path=skill_file_path,
+                    object_key=skill_object_key
                 )
-        else:
-            logger.warning("ObjectStorageClient is not initialized")
+                if icon_file_path and icon_object_key:
+                    cos_client.upload_file(
+                        bucket_name=bucket_name,
+                        local_file_path=icon_file_path,
+                        object_key=icon_object_key
+                    )
+            else:
+                logger.warning("ObjectStorageClient is not initialized")
     except Exception as e:
-        logger.error(f"Error uploading to object storage: {str(e)}")
+        logger.error(f"Error storing skill content: {str(e)}")
         raise BadRequestException(message=f"Failed to upload files: {str(e)}")
 
     # Delete temp files
@@ -538,19 +573,23 @@ async def update_skill(skill_id: str):
 
         try:
             await icon_file.save(icon_file_path)
-            cos_client = ObjectStorageClient(config)
-            if cos_client.client:
-                cos_client.upload_file(
-                    bucket_name="sudoworkhub-1309794936",
-                    local_file_path=icon_file_path,
-                    object_key=icon_object_key
-                )
+            if is_local_content_mode():
+                store_content_object(icon_file_path, icon_object_key)
                 data["icon"] = icon_object_key
             else:
-                logger.warning("ObjectStorageClient is not initialized")
-                data["icon"] = icon_object_key
+                cos_client = ObjectStorageClient(config)
+                if cos_client.client:
+                    cos_client.upload_file(
+                        bucket_name="sudoworkhub-1309794936",
+                        local_file_path=icon_file_path,
+                        object_key=icon_object_key
+                    )
+                    data["icon"] = icon_object_key
+                else:
+                    logger.warning("ObjectStorageClient is not initialized")
+                    data["icon"] = icon_object_key
         except Exception as e:
-            logger.error(f"Error uploading skill icon to object storage: {str(e)}")
+            logger.error(f"Error storing skill icon: {str(e)}")
             raise BadRequestException(message=f"Failed to upload icon_file: {str(e)}")
         finally:
             try:

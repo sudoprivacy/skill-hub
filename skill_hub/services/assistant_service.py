@@ -181,11 +181,26 @@ class AssistantService:
         }
 
     def _format_assistants(self, assistants: List[Assistant]) -> List[Assistant]:
-        """Format assistant data, prepending CDN URL to avatar, prompt_file and source_url if they are just paths"""
+        """Format assistant data, resolving avatar, prompt_file and source_url
+        object keys to absolute URLs.
+
+        In local content mode (SKILL_HUB_CONTENT_BASE_URL set) keys resolve to
+        this hub's local content route; otherwise they are prefixed with the
+        COS base URL (unchanged historical behavior).
+        """
         import copy
+        from skill_hub.utils.content_storage import is_local_mode, resolve_local_only
 
         formatted_assistants = []
         base_url = 'https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com'
+        local = is_local_mode()
+
+        def _resolve(value):
+            if not value or value.startswith('http'):
+                return value
+            if local:
+                return resolve_local_only(value)
+            return f"{base_url}/{value}"
 
         for assistant in assistants:
             # Clone to avoid modifying original SQLAlchemy object state
@@ -197,14 +212,9 @@ class AssistantService:
 
             cloned = Assistant(**ast_dict)
 
-            if cloned.avatar and not cloned.avatar.startswith('http'):
-                cloned.avatar = f"{base_url}/{cloned.avatar}"
-
-            if cloned.prompt_file and not cloned.prompt_file.startswith('http'):
-                cloned.prompt_file = f"{base_url}/{cloned.prompt_file}"
-
-            if cloned.source_url and not cloned.source_url.startswith('http'):
-                cloned.source_url = f"{base_url}/{cloned.source_url}"
+            cloned.avatar = _resolve(cloned.avatar)
+            cloned.prompt_file = _resolve(cloned.prompt_file)
+            cloned.source_url = _resolve(cloned.source_url)
 
             formatted_assistants.append(cloned)
 
