@@ -242,7 +242,7 @@ class SkillService:
             cloned_skills = cloned_skills[:limit]
             
         next_cursor = None
-        if cloned_skills:
+        if has_more and cloned_skills:
             last_skill = cloned_skills[-1]
             last_sort = last_skill.sort_order if last_skill.sort_order is not None else 0
             last_id = str(last_skill.id)
