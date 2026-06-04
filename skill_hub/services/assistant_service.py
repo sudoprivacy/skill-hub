@@ -166,7 +166,7 @@ class AssistantService:
         formatted_assistants = self._format_assistants(assistants)
 
         next_cursor = None
-        if formatted_assistants:
+        if has_more and formatted_assistants:
             last_assistant = formatted_assistants[-1]
             last_sort_order = last_assistant.sort_order
             last_created = last_assistant.created_at.isoformat() if last_assistant.created_at else ""
