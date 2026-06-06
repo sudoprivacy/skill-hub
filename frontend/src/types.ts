@@ -27,6 +27,7 @@ export type Skill = {
   star_count?: number;
   status?: number;
   sort_order?: number;
+  download_count?: number;
   created_at?: string;
   updated_at?: string;
   latestVersion?: {

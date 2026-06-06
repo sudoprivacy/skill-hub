@@ -440,12 +440,33 @@ class SkillService:
         if skill.star_count > 0:
             skill.star_count -= 1
             skill.updated_at = datetime.utcnow()
-            
+
             await self.session.commit()
             await self.session.refresh(skill)
-        
+
         return skill
-    
+
+    async def increment_download_count(self, skill_id: str) -> Optional[Skill]:
+        """Increment download count for a skill
+
+        Args:
+            skill_id: Skill ID (UUID string)
+
+        Returns:
+            Updated skill if found, None otherwise
+        """
+        skill = await self.get_by_id(skill_id)
+        if not skill:
+            return None
+
+        skill.download_count += 1
+        skill.updated_at = datetime.utcnow()
+
+        await self.session.commit()
+        await self.session.refresh(skill)
+
+        return skill
+
     async def get_categories(self, tenant_id: Optional[str] = None) -> List[str]:
         """Get list of all categories ordered by count descending
 

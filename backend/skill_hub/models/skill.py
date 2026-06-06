@@ -119,6 +119,15 @@ class Skill(Base):
     )
     
     # Statistics
+    download_count = Column(
+        Integer,
+        default=0,
+        server_default="0",
+        nullable=False,
+        index=True,
+        comment="Number of downloads"
+    )
+
     star_count = Column(
         Integer,
         default=0,
@@ -183,6 +192,7 @@ class Skill(Base):
             "emoji": self.emoji,
             "icon": self.icon,
             "homepage": self.homepage,
+            "download_count": self.download_count,
             "star_count": self.star_count,
             "status": self.status,
             "sort_order": self.sort_order,
@@ -259,7 +269,10 @@ class Skill(Base):
         
         if "homepage" in data:
             skill.homepage = data["homepage"]
-        
+
+        if "download_count" in data:
+            skill.download_count = data["download_count"]
+
         if "star_count" in data:
             skill.star_count = data["star_count"]
             

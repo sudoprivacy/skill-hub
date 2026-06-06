@@ -39,6 +39,7 @@ export const fieldsByEntity: Record<Entity, FieldConfig[]> = {
     { name: "author_id", label: "作者 ID" },
     { name: "tenant_id", label: "租户 ID" },
     { name: "sort_order", label: "排序", type: "number" },
+    { name: "download_count", label: "下载次数", type: "number", placeholder: "0" },
     { name: "status", label: "状态", type: "select", options: statusOptions },
     { name: "changelog", label: "版本日志", type: "textarea", createOnly: true }
   ],

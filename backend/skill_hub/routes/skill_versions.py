@@ -208,19 +208,23 @@ async def get_skill_version(version_id):
         async with get_session() as session:
             skill_version_service = SkillVersionService(session)
             skill_version = await skill_version_service.get_by_id(version_id)
-            
+
             if not skill_version:
                 return error_response(
                     message=f"Skill version with ID {version_id} not found",
                     status_code=404,
                     error_code="NOT_FOUND",
                 )
-            
+
+            # Increment the download count of the parent skill
+            skill_service = SkillService(session)
+            await skill_service.increment_download_count(str(skill_version.skill_id))
+
             return success_response(
                 data=skill_version.to_dict(),
                 message="Skill version retrieved successfully",
             )
-    
+
     except Exception as e:
         return error_response(
             message=f"Failed to get skill version: {str(e)}",

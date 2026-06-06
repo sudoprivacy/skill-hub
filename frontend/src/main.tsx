@@ -503,6 +503,7 @@ function columnsFor(entity: Entity) {
     { key: "categories", label: "分类" },
     { key: "status", label: "状态" },
     { key: "latestVersion", label: "最新版本" },
+    { key: "download_count", label: "下载次数" },
     { key: "sort_order", label: "排序" },
     { key: "updated_at", label: "更新时间" }
   ];
