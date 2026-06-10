@@ -87,11 +87,12 @@ class SkillVersion(Base):
         Returns:
             Dictionary representation of the skill version
         """
+        from skill_hub.utils.content_storage import resolve_source_url
         return {
             "id": str(self.id),
             "skill_id": str(self.skill_id),
             "version": self.version,
-            "source_url": "https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com/" + self.source_url,
+            "source_url": resolve_source_url(self.source_url),
             "checksum": self.checksum,
             "changelog": self.changelog,
             "readme_content": self.readme_content,

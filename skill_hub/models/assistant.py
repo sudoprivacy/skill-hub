@@ -133,14 +133,19 @@ class Assistant(Base):
     
     def to_dict(self) -> dict:
         """Convert to dictionary representation, exposing camelCase keys for API."""
+        # In local content mode, resolve stored object keys to absolute URLs
+        # served by this hub. In COS/default mode, values are returned raw
+        # (unchanged from historical behavior) — resolve_local_only() is a
+        # no-op then, so the public hub is unaffected.
+        from skill_hub.utils.content_storage import resolve_local_only
         return {
             "id": str(self.id),
             "name": self.name,
             "profession": self.profession,
             "description": self.description,
-            "promptFile": self.prompt_file,
-            "avatar": self.avatar,
-            "sourceUrl": self.source_url,
+            "promptFile": resolve_local_only(self.prompt_file),
+            "avatar": resolve_local_only(self.avatar),
+            "sourceUrl": resolve_local_only(self.source_url),
             "defaultInitPrompt": self.default_init_prompt,
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,

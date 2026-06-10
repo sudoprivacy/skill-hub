@@ -12,6 +12,10 @@ from skill_hub.db.database import get_session
 from skill_hub.api.responses import success_response
 from skill_hub.api.exceptions import BadRequestException, NotFoundException
 from skill_hub.utils.object_storage_client import ObjectStorageClient
+from skill_hub.utils.content_storage import (
+    is_local_mode as is_local_content_mode,
+    store_object as store_content_object,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -213,40 +217,52 @@ async def create_assistant():
                 await source_url_file.save(source_url_file_path)
                 source_url_object_key = f"assistant-hub/{assistant_id}/{source_url_file.filename}"
 
-            # Upload to Tencent Cloud Object Storage
+            # Store assistant files. In local content mode they go to the
+            # local filesystem (served by this hub); otherwise COS.
             try:
-                cos_client = ObjectStorageClient(config)
-
-                if cos_client.client:
-                    bucket_name = "sudoworkhub-1309794936" # Following skills.py convention
-
+                if is_local_content_mode():
                     if prompt_file_path and prompt_object_key:
-                        cos_client.upload_file(
-                            bucket_name=bucket_name,
-                            local_file_path=prompt_file_path,
-                            object_key=prompt_object_key
-                        )
+                        store_content_object(prompt_file_path, prompt_object_key)
                         req.prompt_file = prompt_object_key
-
                     if avatar_file_path and avatar_object_key:
-                        cos_client.upload_file(
-                            bucket_name=bucket_name,
-                            local_file_path=avatar_file_path,
-                            object_key=avatar_object_key
-                        )
+                        store_content_object(avatar_file_path, avatar_object_key)
                         req.avatar = avatar_object_key
-
                     if source_url_file_path and source_url_object_key:
-                        cos_client.upload_file(
-                            bucket_name=bucket_name,
-                            local_file_path=source_url_file_path,
-                            object_key=source_url_object_key
-                        )
+                        store_content_object(source_url_file_path, source_url_object_key)
                         req.source_url = source_url_object_key
                 else:
-                    logger.warning("ObjectStorageClient is not initialized")
+                    cos_client = ObjectStorageClient(config)
+
+                    if cos_client.client:
+                        bucket_name = "sudoworkhub-1309794936" # Following skills.py convention
+
+                        if prompt_file_path and prompt_object_key:
+                            cos_client.upload_file(
+                                bucket_name=bucket_name,
+                                local_file_path=prompt_file_path,
+                                object_key=prompt_object_key
+                            )
+                            req.prompt_file = prompt_object_key
+
+                        if avatar_file_path and avatar_object_key:
+                            cos_client.upload_file(
+                                bucket_name=bucket_name,
+                                local_file_path=avatar_file_path,
+                                object_key=avatar_object_key
+                            )
+                            req.avatar = avatar_object_key
+
+                        if source_url_file_path and source_url_object_key:
+                            cos_client.upload_file(
+                                bucket_name=bucket_name,
+                                local_file_path=source_url_file_path,
+                                object_key=source_url_object_key
+                            )
+                            req.source_url = source_url_object_key
+                    else:
+                        logger.warning("ObjectStorageClient is not initialized")
             except Exception as e:
-                logger.error(f"Error uploading to object storage: {str(e)}")
+                logger.error(f"Error storing assistant content: {str(e)}")
                 raise BadRequestException(message=f"Failed to upload files: {str(e)}")
 
             # Cleanup temp files
