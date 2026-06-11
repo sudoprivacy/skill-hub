@@ -466,7 +466,7 @@ async def add_skill(skill: SkillCreateRequest):
         else:
             cos_client = ObjectStorageClient(config)
             if cos_client.client:
-                bucket_name = "sudoworkhub-1309794936"
+                bucket_name = "sudowork-hub-1309794936"
                 cos_client.upload_file(
                     bucket_name=bucket_name,
                     local_file_path=skill_file_path,
@@ -580,7 +580,7 @@ async def update_skill(skill_id: str):
                 cos_client = ObjectStorageClient(config)
                 if cos_client.client:
                     cos_client.upload_file(
-                        bucket_name="sudoworkhub-1309794936",
+                        bucket_name="sudowork-hub-1309794936",
                         local_file_path=icon_file_path,
                         object_key=icon_object_key
                     )

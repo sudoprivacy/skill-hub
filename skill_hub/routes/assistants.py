@@ -234,7 +234,7 @@ async def create_assistant():
                     cos_client = ObjectStorageClient(config)
 
                     if cos_client.client:
-                        bucket_name = "sudoworkhub-1309794936" # Following skills.py convention
+                        bucket_name = "sudowork-hub-1309794936" # Following skills.py convention
 
                         if prompt_file_path and prompt_object_key:
                             cos_client.upload_file(

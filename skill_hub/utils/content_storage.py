@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # Legacy default kept for backwards compatibility: when neither local content
 # mode nor an explicit COS base URL is configured, source_url values are
 # prefixed with this (matches the historical hard-coded value).
-_DEFAULT_COS_BASE_URL = "https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com"
+_DEFAULT_COS_BASE_URL = "https://sudowork-hub-1309794936.cos.ap-beijing.myqcloud.com"
 
 
 def _data_dir() -> str:
