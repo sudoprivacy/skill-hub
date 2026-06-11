@@ -15,6 +15,7 @@ from skill_hub.utils.object_storage_client import ObjectStorageClient
 from skill_hub.utils.content_storage import (
     is_local_mode as is_local_content_mode,
     store_object as store_content_object,
+    cos_bucket_name,
 )
 
 logger = logging.getLogger(__name__)
@@ -234,7 +235,7 @@ async def create_assistant():
                     cos_client = ObjectStorageClient(config)
 
                     if cos_client.client:
-                        bucket_name = "sudowork-hub-1309794936" # Following skills.py convention
+                        bucket_name = cos_bucket_name()
 
                         if prompt_file_path and prompt_object_key:
                             cos_client.upload_file(

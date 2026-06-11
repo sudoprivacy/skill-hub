@@ -16,6 +16,7 @@ can be used both from request handlers and from model `to_dict()` methods
 import os
 import shutil
 import logging
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,23 @@ def _data_dir() -> str:
 def content_base_url() -> str:
     """Public base URL for locally-served content, or '' if not in local mode."""
     return (os.getenv("SKILL_HUB_CONTENT_BASE_URL", "") or "").strip().rstrip("/")
+
+
+def cos_base_url() -> str:
+    """Tencent COS base URL, read from SKILL_HUB_COS_BASE_URL.
+
+    Falls back to the legacy hard-coded value only when the env var is unset.
+    """
+    return (os.getenv("SKILL_HUB_COS_BASE_URL", "") or "").strip().rstrip("/") or _DEFAULT_COS_BASE_URL
+
+
+def cos_bucket_name() -> str:
+    """Bucket name derived from the COS base URL host (its first label).
+
+    e.g. ``https://my-bucket-123.cos.ap-beijing.myqcloud.com`` -> ``my-bucket-123``.
+    """
+    host = urlparse(cos_base_url()).hostname or ""
+    return host.split(".")[0]
 
 
 def is_local_mode() -> bool:
@@ -83,8 +101,7 @@ def resolve_source_url(source_url: str) -> str:
         # Served by this hub's download route.
         return f"{base}{api_prefix()}/skills/content/{key}"
     # Legacy COS behaviour.
-    cos_base = (os.getenv("SKILL_HUB_COS_BASE_URL", "") or "").strip().rstrip("/") or _DEFAULT_COS_BASE_URL
-    return f"{cos_base}/{key}"
+    return f"{cos_base_url()}/{key}"
 
 
 def resolve_local_only(object_key: str) -> str:

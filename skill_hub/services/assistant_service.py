@@ -189,10 +189,10 @@ class AssistantService:
         COS base URL (unchanged historical behavior).
         """
         import copy
-        from skill_hub.utils.content_storage import is_local_mode, resolve_local_only
+        from skill_hub.utils.content_storage import is_local_mode, resolve_local_only, cos_base_url
 
         formatted_assistants = []
-        base_url = 'https://sudowork-hub-1309794936.cos.ap-beijing.myqcloud.com'
+        base_url = cos_base_url()
         local = is_local_mode()
 
         def _resolve(value):
