@@ -192,7 +192,7 @@ class AssistantService:
         from skill_hub.utils.content_storage import is_local_mode, resolve_local_only
 
         formatted_assistants = []
-        base_url = 'https://sudoworkhub-1309794936.cos.ap-beijing.myqcloud.com'
+        base_url = 'https://sudowork-hub-1309794936.cos.ap-beijing.myqcloud.com'
         local = is_local_mode()
 
         def _resolve(value):
