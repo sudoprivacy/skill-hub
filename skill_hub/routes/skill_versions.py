@@ -14,6 +14,7 @@ from skill_hub.db.database import get_session
 from skill_hub.services.skill_version_service import SkillVersionService
 from skill_hub.services.skill_service import SkillService
 from skill_hub.utils.object_storage_client import ObjectStorageClient
+from skill_hub.utils.content_storage import cos_bucket_name
 from skill_hub.api.exceptions import BadRequestException
 
 skill_versions_router = Blueprint("skill_versions", __name__)
@@ -67,7 +68,7 @@ async def create_skill_version():
 
             # 4. Upload zip to COS
             cos_client = ObjectStorageClient(config)
-            bucket_name = "sudowork-hub-1309794936"
+            bucket_name = cos_bucket_name()
 
             # Use original skill_id for path matching existing pattern
             skill_object_key = f"skill-hub/{skill_id}/{version}/{skill_file.filename}"

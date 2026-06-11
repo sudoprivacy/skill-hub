@@ -16,6 +16,7 @@ from skill_hub.utils.content_storage import (
     is_local_mode as is_local_content_mode,
     store_object as store_content_object,
     local_path_for as content_local_path,
+    cos_bucket_name,
 )
 from skill_hub.api.responses import success_response
 from skill_hub.api.exceptions import BadRequestException, NotFoundException
@@ -466,7 +467,7 @@ async def add_skill(skill: SkillCreateRequest):
         else:
             cos_client = ObjectStorageClient(config)
             if cos_client.client:
-                bucket_name = "sudowork-hub-1309794936"
+                bucket_name = cos_bucket_name()
                 cos_client.upload_file(
                     bucket_name=bucket_name,
                     local_file_path=skill_file_path,
@@ -580,7 +581,7 @@ async def update_skill(skill_id: str):
                 cos_client = ObjectStorageClient(config)
                 if cos_client.client:
                     cos_client.upload_file(
-                        bucket_name="sudowork-hub-1309794936",
+                        bucket_name=cos_bucket_name(),
                         local_file_path=icon_file_path,
                         object_key=icon_object_key
                     )
