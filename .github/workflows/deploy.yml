@@ -72,6 +72,8 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 10m
+          command_timeout: 10m
           script: |
             set -e  # Exit immediately if a command exits with a non-zero status.
 
@@ -81,15 +83,16 @@ jobs:
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Pull the latest image
-            docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            # Pull the latest image with timeout
+            timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "Pull timeout warning - continuing deployment"
 
             # Recreate containers with the new image
             # Stop existing containers that might use the same names if they were launched differently
             docker compose -f docker-compose.prod.yml down || true
 
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d
+            # Pull and start with explicit timeout
+            timeout 8m docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
+            timeout 5m docker compose -f docker-compose.prod.yml up -d
 
             # Clean up old dangling images to save disk space
             docker image prune -af
