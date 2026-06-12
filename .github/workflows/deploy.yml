@@ -33,7 +33,6 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=latest
             type=sha,format=short
 
       - name: Set up Docker Buildx
@@ -83,16 +82,18 @@ jobs:
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
-            # Pull the latest image with timeout
-            timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest || echo "Pull timeout warning - continuing deployment"
+            IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
+
+            # Pull the image built from this commit with timeout
+            timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG} || echo "Pull timeout warning - continuing deployment"
 
             # Recreate containers with the new image
             # Stop existing containers that might use the same names if they were launched differently
             docker compose -f docker-compose.prod.yml down || true
 
             # Pull and start with explicit timeout
-            timeout 8m docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
-            timeout 5m docker compose -f docker-compose.prod.yml up -d
+            timeout 8m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
+            timeout 5m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml up -d
 
             # Clean up old dangling images to save disk space
             docker image prune -af
