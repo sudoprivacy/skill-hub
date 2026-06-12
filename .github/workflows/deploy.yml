@@ -82,7 +82,8 @@ jobs:
             # Navigate to deployment directory
             cd ${{ secrets.DEPLOY_PATH }}
 
-            IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
+            export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
+            export IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
 
             # Pull the image built from this commit with timeout
             timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG} || echo "Pull timeout warning - continuing deployment"
