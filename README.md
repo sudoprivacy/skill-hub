@@ -297,6 +297,7 @@ The `skills` table has the following structure:
 | emoji | VARCHAR(10) | Corresponding icon (from metadata) |
 | homepage | VARCHAR(500) | Skill homepage link |
 | star_count | INTEGER | Number of stars/likes |
+| download_count | INTEGER | Number of package downloads/installations |
 | created_at | TIMESTAMP WITH TIME ZONE | First listing time |
 | updated_at | TIMESTAMP WITH TIME ZONE | Last update time |
 

@@ -1,6 +1,6 @@
 """Skill Versions management routes"""
 
-from quart import Blueprint, request, g, current_app
+from quart import Blueprint, request, g, current_app, redirect, send_file
 import os
 import uuid
 import logging
@@ -14,8 +14,13 @@ from skill_hub.db.database import get_session
 from skill_hub.services.skill_version_service import SkillVersionService
 from skill_hub.services.skill_service import SkillService
 from skill_hub.utils.object_storage_client import ObjectStorageClient
-from skill_hub.utils.content_storage import cos_bucket_name
-from skill_hub.api.exceptions import BadRequestException
+from skill_hub.utils.content_storage import (
+    cos_bucket_name,
+    cos_base_url,
+    is_local_mode as is_local_content_mode,
+    local_path_for as content_local_path,
+)
+from skill_hub.api.exceptions import BadRequestException, NotFoundException
 
 skill_versions_router = Blueprint("skill_versions", __name__)
 logger = logging.getLogger(__name__)
@@ -176,3 +181,53 @@ async def get_skill_version(version_id):
             status_code=500,
             error_code="INTERNAL_SERVER_ERROR",
         )
+
+
+@skill_versions_router.route("/<version_id>/download", methods=["GET"])
+@token_required
+async def download_skill_version(version_id):
+    """Download a skill version package and count one installation/download."""
+    async with get_session() as session:
+        skill_version_service = SkillVersionService(session)
+
+        skill_version = await skill_version_service.get_by_id(version_id)
+        if not skill_version:
+            raise NotFoundException(message=f"Skill version with ID {version_id} not found")
+
+        skill_id = str(skill_version.skill_id)
+        source_url = skill_version.source_url
+
+    if source_url.startswith(("http://", "https://")):
+        target_url = source_url
+        abs_path = None
+        as_attachment = False
+
+    else:
+        object_key = source_url.lstrip("/")
+
+        if is_local_content_mode():
+            try:
+                abs_path = content_local_path(object_key)
+            except ValueError:
+                raise BadRequestException(message="Invalid content path")
+
+            if not os.path.isfile(abs_path):
+                raise NotFoundException(message=f"Content not found: {object_key}")
+
+            target_url = None
+            as_attachment = True
+        else:
+            target_url = f"{cos_base_url()}/{object_key}"
+            abs_path = None
+            as_attachment = False
+
+    async with get_session() as session:
+        skill_service = SkillService(session)
+        skill = await skill_service.increment_download_count(skill_id)
+        if not skill:
+            raise NotFoundException(message=f"Skill with ID {skill_id} not found")
+
+    if abs_path:
+        return await send_file(abs_path, as_attachment=as_attachment)
+
+    return redirect(target_url, code=302)

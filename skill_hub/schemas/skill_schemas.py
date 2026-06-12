@@ -97,6 +97,7 @@ class SkillUpdateRequest:
     status: Optional[int] = None
     tenant_id: Optional[str] = None
     star_count: Optional[int] = None
+    download_count: Optional[int] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SkillUpdateRequest":
@@ -136,6 +137,7 @@ class SkillUpdateRequest:
             sort_order=_parse_int(_get_val("sort_order", "sortOrder")),
             status=_parse_int(_get_val("status")),
             star_count=_parse_int(_get_val("star_count", "starCount")),
+            download_count=_parse_int(_get_val("download_count", "downloadCount")),
         )
 
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -143,7 +145,7 @@ class SkillUpdateRequest:
             self.name, self.display_name, self.category, self.description,
             self.core_features, self.applicable_scenarios, self.categories,
             self.emoji, self.icon, self.homepage, self.author_id, self.sort_order,
-            self.status, self.tenant_id, self.star_count
+            self.status, self.tenant_id, self.star_count, self.download_count
         ]
 
         if all(field is None for field in fields):
@@ -206,5 +208,8 @@ class SkillUpdateRequest:
 
         if self.star_count is not None:
             data["star_count"] = self.star_count
+
+        if self.download_count is not None:
+            data["download_count"] = self.download_count
 
         return data

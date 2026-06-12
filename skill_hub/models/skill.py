@@ -23,6 +23,7 @@ class Skill(Base):
         emoji: Corresponding icon (from metadata)
         homepage: Skill homepage link
         star_count: Number of stars/likes
+        download_count: Number of package downloads/installations
         created_at: First listing time
         updated_at: Last update time
     """
@@ -125,6 +126,13 @@ class Skill(Base):
         nullable=False,
         comment="Number of stars/likes"
     )
+
+    download_count = Column(
+        Integer,
+        default=0,
+        nullable=False,
+        comment="Number of package downloads/installations"
+    )
     
     status = Column(
         Integer,
@@ -184,6 +192,7 @@ class Skill(Base):
             "icon": self.icon,
             "homepage": self.homepage,
             "star_count": self.star_count,
+            "download_count": self.download_count,
             "status": self.status,
             "sort_order": self.sort_order,
             "core_features": self.core_features,
@@ -198,10 +207,11 @@ class Skill(Base):
             sorted_versions = sorted(self.versions, key=lambda v: v.created_at or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
             if sorted_versions:
                 latest = sorted_versions[0]
-                from skill_hub.utils.content_storage import resolve_source_url
+                from skill_hub.utils.content_storage import resolve_source_url, resolve_version_download_url
                 result["latestVersion"] = {
                     "version": latest.version,
                     "source_url": resolve_source_url(latest.source_url),
+                    "download_url": resolve_version_download_url(str(latest.id)),
                     "checksum": latest.checksum,
                     "changelog": latest.changelog,
                     "created_at": latest.created_at.isoformat() if latest.created_at else None
@@ -263,6 +273,9 @@ class Skill(Base):
         
         if "star_count" in data:
             skill.star_count = data["star_count"]
+
+        if "download_count" in data:
+            skill.download_count = data["download_count"]
             
         if "status" in data:
             skill.status = data["status"]

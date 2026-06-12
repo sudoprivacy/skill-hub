@@ -87,12 +87,13 @@ class SkillVersion(Base):
         Returns:
             Dictionary representation of the skill version
         """
-        from skill_hub.utils.content_storage import resolve_source_url
+        from skill_hub.utils.content_storage import resolve_source_url, resolve_version_download_url
         return {
             "id": str(self.id),
             "skill_id": str(self.skill_id),
             "version": self.version,
             "source_url": resolve_source_url(self.source_url),
+            "download_url": resolve_version_download_url(str(self.id)),
             "checksum": self.checksum,
             "changelog": self.changelog,
             "readme_content": self.readme_content,

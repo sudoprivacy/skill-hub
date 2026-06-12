@@ -104,6 +104,14 @@ def resolve_source_url(source_url: str) -> str:
     return f"{cos_base_url()}/{key}"
 
 
+def resolve_version_download_url(version_id: str) -> str:
+    """Build the countable package download URL for a skill version."""
+    if not version_id:
+        return version_id
+    base = content_base_url()
+    return f"{base}{api_prefix()}/skill-versions/{version_id}/download"
+
+
 def resolve_local_only(object_key: str) -> str:
     """Resolve an object key to a local content URL, but ONLY in local mode.
 
