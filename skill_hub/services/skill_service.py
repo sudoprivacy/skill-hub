@@ -423,6 +423,40 @@ class SkillService:
         await self.session.refresh(skill)
         
         return skill
+
+    async def increment_download_count(self, skill_id: str) -> Optional[Skill]:
+        """Increment download/install count for a skill atomically.
+
+        Args:
+            skill_id: Skill ID (UUID string)
+
+        Returns:
+            Updated skill if found, None otherwise
+        """
+        try:
+            skill_uuid = uuid.UUID(skill_id)
+        except ValueError:
+            return None
+
+        stmt = (
+            update(Skill)
+            .where(Skill.id == skill_uuid)
+            .values(
+                download_count=func.coalesce(Skill.download_count, 0) + 1,
+                updated_at=datetime.utcnow(),
+            )
+            .returning(Skill)
+        )
+        result = await self.session.execute(stmt)
+        skill = result.scalar_one_or_none()
+        if not skill:
+            await self.session.rollback()
+            return None
+
+        await self.session.commit()
+        await self.session.refresh(skill)
+
+        return skill
     
     async def decrement_star_count(self, skill_id: str) -> Optional[Skill]:
         """Decrement star count for a skill

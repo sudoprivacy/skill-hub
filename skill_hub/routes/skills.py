@@ -91,6 +91,13 @@ async def download_content(object_key: str):
     if not os.path.isfile(abs_path):
         raise NotFoundException(message=f"Content not found: {object_key}")
 
+    async with get_session() as session:
+        skill_version_service = SkillVersionService(session)
+        version = await skill_version_service.get_by_source_url(object_key)
+        if version:
+            skill_service = SkillService(session)
+            await skill_service.increment_download_count(str(version.skill_id))
+
     from quart import send_file
     return await send_file(abs_path, as_attachment=False)
 

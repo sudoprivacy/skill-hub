@@ -98,6 +98,19 @@ class SkillVersionService:
         )
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
+
+    async def get_by_source_url(self, source_url: str) -> Optional[SkillVersion]:
+        """Get skill version by stored package object key.
+
+        Args:
+            source_url: Stored source object key
+
+        Returns:
+            Skill version if found, None otherwise
+        """
+        stmt = select(SkillVersion).where(SkillVersion.source_url == source_url)
+        result = await self.session.execute(stmt)
+        return result.scalar_one_or_none()
     
     async def list_by_skill(
         self,

@@ -6,8 +6,8 @@ import os
 import uuid
 from datetime import datetime
 
-# Add the current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the project root to Python path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def test_skill_model():
@@ -31,6 +31,7 @@ def test_skill_model():
             emoji="🧪",
             homepage="https://example.com/test",
             star_count=42,
+            download_count=7,
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -42,6 +43,7 @@ def test_skill_model():
         print(f"  - Author ID: {skill.author_id}")
         print(f"  - Category: {skill.category}")
         print(f"  - Star count: {skill.star_count}")
+        print(f"  - Download count: {skill.download_count}")
         
         # Test to_dict method
         skill_dict = skill.to_dict()
@@ -60,6 +62,7 @@ def test_skill_model():
             "emoji": "📝",
             "homepage": "https://example.com/from-dict",
             "star_count": 10,
+            "download_count": 3,
         }
         
         skill_from_dict = Skill.from_dict(test_data)
@@ -68,6 +71,7 @@ def test_skill_model():
         print(f"  - Display name: {skill_from_dict.display_name}")
         print(f"  - Author ID: {skill_from_dict.author_id}")
         print(f"  - Star count: {skill_from_dict.star_count}")
+        print(f"  - Download count: {skill_from_dict.download_count}")
         
         return True
         
@@ -88,7 +92,7 @@ def test_skill_service():
         print("✓ SkillService imported successfully")
         print("  - Note: Actual database operations require a running PostgreSQL instance")
         print("  - Service methods: create, get_by_id, get_by_name, list_all, update, delete")
-        print("  - Additional methods: increment_star_count, get_categories, get_stats")
+        print("  - Additional methods: increment_star_count, increment_download_count, get_categories, get_stats")
         
         # Test service method signatures
         service_methods = [
@@ -99,6 +103,7 @@ def test_skill_service():
             "update",
             "delete",
             "increment_star_count",
+            "increment_download_count",
             "decrement_star_count",
             "get_categories",
             "get_stats",
@@ -172,6 +177,7 @@ def test_migration_sql():
                 ("name VARCHAR(255) NOT NULL UNIQUE", "Unique name constraint"),
                 ("author_id UUID NOT NULL", "Author ID column"),
                 ("star_count INTEGER DEFAULT 0", "Star count column"),
+                ("download_count INTEGER NOT NULL DEFAULT 0", "Download count column"),
                 ("created_at TIMESTAMP", "Created timestamp"),
                 ("updated_at TIMESTAMP", "Updated timestamp"),
                 ("CREATE INDEX", "Index creation"),

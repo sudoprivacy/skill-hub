@@ -9,6 +9,7 @@ CREATE TABLE skills (
     emoji VARCHAR(10),
     homepage VARCHAR(500),
     star_count INTEGER DEFAULT 0,
+    download_count INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     -- Add indexes for better query performance
@@ -20,6 +21,7 @@ CREATE INDEX idx_skills_name ON skills(name);
 CREATE INDEX idx_skills_author_id ON skills(author_id);
 CREATE INDEX idx_skills_category ON skills(category);
 CREATE INDEX idx_skills_star_count ON skills(star_count DESC);
+CREATE INDEX idx_skills_download_count ON skills(download_count DESC);
 CREATE INDEX idx_skills_created_at ON skills(created_at DESC);
 
 -- Create a trigger to automatically update the updated_at timestamp
