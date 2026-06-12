@@ -93,8 +93,8 @@ jobs:
             docker compose -f docker-compose.prod.yml down || true
 
             # Pull and start with explicit timeout
-            timeout 8m docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
-            timeout 5m docker compose -f docker-compose.prod.yml up -d
+            timeout 8m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
+            timeout 5m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml up -d
 
             # Clean up old dangling images to save disk space
             docker image prune -af
