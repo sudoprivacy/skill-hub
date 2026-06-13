@@ -6,6 +6,7 @@ import json
 class AssistantCreateRequest:
     name: str
     profession: str
+    version: str = "v1.0.0"
     description: Optional[str] = None
     prompt_file: Optional[str] = None
     avatar: Optional[str] = None
@@ -16,6 +17,7 @@ class AssistantCreateRequest:
     categories: Optional[List[str]] = None
     skills: Optional[List[str]] = None
     status: Optional[int] = 0
+    changelog: Optional[str] = None
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "AssistantCreateRequest":
@@ -57,6 +59,7 @@ class AssistantCreateRequest:
         return cls(
             name=data.get("name", ""),
             profession=data.get("profession", ""),
+            version=_get_val("version") or "v1.0.0",
             description=_get_val("description"),
             prompt_file=_get_val("promptFile", "prompt_file"),
             avatar=_get_val("avatar"),
@@ -66,7 +69,8 @@ class AssistantCreateRequest:
             sort_order=int(_get_val("sortOrder", "sort_order")) if _get_val("sortOrder", "sort_order") is not None else 0,
             status=int(_get_val("status")) if _get_val("status") is not None else 0,
             categories=categories_parsed,
-            skills=skills_parsed
+            skills=skills_parsed,
+            changelog=_get_val("changelog"),
         )
         
     def validate(self) -> Tuple[bool, Optional[str]]:
@@ -116,6 +120,16 @@ class AssistantCreateRequest:
             data["skills"] = self.skills
 
         return data
+
+    def to_version_data(self, assistant_id: str, source_url: str, checksum: str, readme_content: Optional[str] = None) -> Dict[str, Any]:
+        return {
+            "assistant_id": assistant_id,
+            "version": self.version,
+            "source_url": source_url,
+            "checksum": checksum,
+            "changelog": self.changelog,
+            "readme_content": readme_content,
+        }
 
 @dataclass
 class AssistantUpdateRequest:

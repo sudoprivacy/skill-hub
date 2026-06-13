@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime
 from sqlalchemy import Column, String, Text, DateTime, ForeignKey, Integer
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.orm import relationship
 
 from skill_hub.models.skill import Base
 
@@ -130,6 +131,8 @@ class Assistant(Base):
     
     def __repr__(self) -> str:
         return f"<Assistant(id={self.id}, name='{self.name}', profession='{self.profession}')>"
+
+    versions = relationship("AssistantVersion", back_populates="assistant", cascade="all, delete-orphan", lazy="selectin")
     
     def to_dict(self) -> dict:
         """Convert to dictionary representation, exposing camelCase keys for API."""
@@ -137,15 +140,33 @@ class Assistant(Base):
         # served by this hub. In COS/default mode, values are returned raw
         # (unchanged from historical behavior) — resolve_local_only() is a
         # no-op then, so the public hub is unaffected.
-        from skill_hub.utils.content_storage import resolve_local_only
-        return {
+        from skill_hub.utils.content_storage import cos_base_url, is_local_mode, resolve_local_only
+
+        def _resolve(value):
+            if not value or value.startswith(("http://", "https://")):
+                return value
+            if is_local_mode():
+                return resolve_local_only(value)
+            return f"{cos_base_url()}/{value}"
+
+        source_url = self.source_url
+        latest_version = None
+        if hasattr(self, "versions") and self.versions:
+            latest_version = sorted(
+                self.versions,
+                key=lambda v: v.created_at.timestamp() if v.created_at else 0,
+                reverse=True,
+            )[0]
+            source_url = latest_version.source_url
+
+        result = {
             "id": str(self.id),
             "name": self.name,
             "profession": self.profession,
             "description": self.description,
-            "promptFile": resolve_local_only(self.prompt_file),
-            "avatar": resolve_local_only(self.avatar),
-            "sourceUrl": resolve_local_only(self.source_url),
+            "promptFile": _resolve(self.prompt_file),
+            "avatar": _resolve(self.avatar),
+            "sourceUrl": _resolve(source_url),
             "defaultInitPrompt": self.default_init_prompt,
             "tenantId": self.tenant_id,
             "sortOrder": self.sort_order,
@@ -155,6 +176,9 @@ class Assistant(Base):
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
+        if latest_version:
+            result["latestVersion"] = latest_version.to_dict()
+        return result
 
     @classmethod
     def from_dict(cls, data: dict) -> "Assistant":

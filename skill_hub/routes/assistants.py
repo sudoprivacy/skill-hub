@@ -8,6 +8,7 @@ from quart import Blueprint, request, current_app
 from skill_hub.api.auth import token_required
 from skill_hub.schemas.assistant_schemas import AssistantCreateRequest, AssistantUpdateRequest
 from skill_hub.services.assistant_service import AssistantService
+from skill_hub.services.assistant_version_service import AssistantVersionService
 from skill_hub.db.database import get_session
 from skill_hub.api.responses import success_response
 from skill_hub.api.exceptions import BadRequestException, NotFoundException
@@ -114,15 +115,28 @@ async def get_assistant(assistant_id: str):
     """Get assistant by ID"""
     async with get_session() as session:
         assistant_service = AssistantService(session)
+        assistant_version_service = AssistantVersionService(session)
         assistant = await assistant_service.get_by_id(assistant_id)
         if not assistant:
             raise NotFoundException(message="Assistant not found")
 
+        versions_result = await assistant_version_service.list_by_assistant(
+            assistant_id=assistant_id,
+            page=1,
+            per_page=100,
+            sort_by="version",
+            sort_order="desc",
+        )
+
         # Format the assistant to prepend CDN URL
         formatted_assistant = assistant_service._format_assistants([assistant])[0]
+        versions_data = [v.to_dict() for v in versions_result["versions"]]
 
     return success_response(
-        data=formatted_assistant.to_dict(),
+        data={
+            "assistant": formatted_assistant.to_dict(),
+            "versions": versions_data,
+        },
         message="Assistant retrieved successfully"
     )
 
@@ -177,14 +191,23 @@ async def create_assistant():
 
     # Pre-generate UUID for both storage and database
     assistant_id = str(uuid.uuid4())
+    source_url_object_key = None
 
     async with get_session() as session:
         assistant_service = AssistantService(session)
+        assistant_version_service = AssistantVersionService(session)
 
-        # Check if name already exists
         existing = await assistant_service.get_by_name(req.name)
-        if existing:
+        assistant_id = str(existing.id) if existing else assistant_id
+        if existing and not source_url_file:
             raise BadRequestException(message="Assistant name already exists")
+        if existing:
+            existing_version = await assistant_version_service.get_by_assistant_and_version(
+                assistant_id,
+                req.version,
+            )
+            if existing_version:
+                raise BadRequestException(message=f"Version {req.version} already exists for assistant {req.name}")
 
         # Check if we need to upload files
         has_files = prompt_file or avatar_file or source_url_file
@@ -230,7 +253,6 @@ async def create_assistant():
                         req.avatar = avatar_object_key
                     if source_url_file_path and source_url_object_key:
                         store_content_object(source_url_file_path, source_url_object_key)
-                        req.source_url = source_url_object_key
                 else:
                     cos_client = ObjectStorageClient(config)
 
@@ -259,9 +281,9 @@ async def create_assistant():
                                 local_file_path=source_url_file_path,
                                 object_key=source_url_object_key
                             )
-                            req.source_url = source_url_object_key
                     else:
                         logger.warning("ObjectStorageClient is not initialized")
+                        source_url_object_key = None
             except Exception as e:
                 logger.error(f"Error storing assistant content: {str(e)}")
                 raise BadRequestException(message=f"Failed to upload files: {str(e)}")
@@ -279,14 +301,33 @@ async def create_assistant():
             except Exception as e:
                 logger.warning(f"Failed to cleanup temp files: {str(e)}")
 
-        assistant_data = req.to_assistant_data()
-        assistant_data["id"] = assistant_id
+        if not existing:
+            assistant_data = req.to_assistant_data()
+            assistant_data.pop("source_url", None)
+            assistant_data["id"] = assistant_id
+            assistant = await assistant_service.create(assistant_data)
+        else:
+            assistant = existing
 
-        assistant = await assistant_service.create(assistant_data)
+        db_version = None
+        if source_url_object_key:
+            version_data = req.to_version_data(
+                assistant_id=assistant_id,
+                source_url=source_url_object_key,
+                checksum="",
+            )
+            db_version = await assistant_version_service.create(version_data)
+            assistant = await assistant_service.get_by_id(assistant_id)
+
         assistant_dict = assistant.to_dict()
+        if db_version:
+            assistant_dict["latestVersion"] = db_version.to_dict()
 
     return success_response(
-        data=assistant_dict,
+        data={
+            "assistant": assistant_dict,
+            "version": db_version.to_dict() if db_version else None,
+        },
         message="Assistant created successfully",
         status_code=200
     )
