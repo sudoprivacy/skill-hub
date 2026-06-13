@@ -4,6 +4,7 @@ import uuid
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from skill_hub.models.assistant import Assistant
 
@@ -29,7 +30,7 @@ class AssistantService:
             else:
                 assistant_uuid = assistant_id
                 
-            query = select(Assistant).where(Assistant.id == assistant_uuid)
+            query = select(Assistant).options(selectinload(Assistant.versions)).where(Assistant.id == assistant_uuid)
             result = await self.session.execute(query)
             return result.scalar_one_or_none()
         except ValueError:
@@ -57,7 +58,7 @@ class AssistantService:
         Returns:
             List of Assistant objects
         """
-        query = select(Assistant)
+        query = select(Assistant).options(selectinload(Assistant.versions))
 
         if tenant_id is not None:
             query = query.where(Assistant.tenant_id == tenant_id)
@@ -98,7 +99,7 @@ class AssistantService:
         import json
         import sqlalchemy
 
-        query = select(Assistant)
+        query = select(Assistant).options(selectinload(Assistant.versions))
 
         if category:
             query = query.where(Assistant.categories.any(category))
@@ -211,10 +212,11 @@ class AssistantService:
                 ast_dict['skills'] = [str(s) for s in ast_dict['skills']]
 
             cloned = Assistant(**ast_dict)
+            if hasattr(assistant, "versions"):
+                cloned.versions = assistant.versions
 
             cloned.avatar = _resolve(cloned.avatar)
             cloned.prompt_file = _resolve(cloned.prompt_file)
-            cloned.source_url = _resolve(cloned.source_url)
 
             formatted_assistants.append(cloned)
 
