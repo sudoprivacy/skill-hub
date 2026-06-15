@@ -177,7 +177,13 @@ class Assistant(Base):
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,
         }
         if latest_version:
-            result["latestVersion"] = latest_version.to_dict()
+            result["latestVersion"] = {
+                "version": latest_version.version,
+                "source_url": _resolve(latest_version.source_url),
+                "checksum": latest_version.checksum,
+                "changelog": latest_version.changelog,
+                "created_at": latest_version.created_at.isoformat() if latest_version.created_at else None,
+            }
         return result
 
     @classmethod
