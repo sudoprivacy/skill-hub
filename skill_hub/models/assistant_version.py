@@ -22,7 +22,6 @@ class AssistantVersion(Base):
     source_url = Column(Text, nullable=False)
     checksum = Column(String(64), nullable=False)
     changelog = Column(Text)
-    readme_content = Column(Text)
     created_at = Column(DateTime(timezone=True), default=datetime.utcnow)
     updated_at = Column(DateTime(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -35,7 +34,6 @@ class AssistantVersion(Base):
         source_url: str,
         checksum: str,
         changelog: Optional[str] = None,
-        readme_content: Optional[str] = None,
         created_at: Optional[str] = None,
         updated_at: Optional[str] = None,
     ):
@@ -44,7 +42,6 @@ class AssistantVersion(Base):
         self.source_url = source_url
         self.checksum = checksum
         self.changelog = changelog
-        self.readme_content = readme_content
 
         if created_at:
             self.created_at = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
@@ -68,7 +65,6 @@ class AssistantVersion(Base):
             "source_url": _resolve(self.source_url),
             "checksum": self.checksum,
             "changelog": self.changelog,
-            "readme_content": self.readme_content,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
@@ -91,7 +87,6 @@ class AssistantVersion(Base):
             source_url=data.get("source_url", ""),
             checksum=data.get("checksum", ""),
             changelog=data.get("changelog"),
-            readme_content=data.get("readme_content"),
             created_at=created_at,
             updated_at=updated_at,
         )

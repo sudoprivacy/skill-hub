@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS assistant_versions (
     source_url TEXT NOT NULL,
     checksum VARCHAR(64) NOT NULL DEFAULT '',
     changelog TEXT,
-    readme_content TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT unique_assistant_version UNIQUE(assistant_id, version),
@@ -62,6 +61,5 @@ COMMENT ON COLUMN assistant_versions.version IS 'Semantic version (e.g., v1.2.0)
 COMMENT ON COLUMN assistant_versions.source_url IS 'Path or URL to the uploaded assistant ZIP package';
 COMMENT ON COLUMN assistant_versions.checksum IS 'SHA-256 hash of the file for security verification';
 COMMENT ON COLUMN assistant_versions.changelog IS 'Description of changes in this version';
-COMMENT ON COLUMN assistant_versions.readme_content IS 'Full assistant documentation content for display';
 COMMENT ON COLUMN assistant_versions.created_at IS 'Timestamp when the version was created';
 COMMENT ON COLUMN assistant_versions.updated_at IS 'Timestamp when the version was last updated';

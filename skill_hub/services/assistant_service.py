@@ -4,9 +4,11 @@ import uuid
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm import selectinload
 
 from skill_hub.models.assistant import Assistant
+from skill_hub.models.assistant_version import AssistantVersion
 
 class AssistantService:
     """Service for managing assistants"""
@@ -165,6 +167,7 @@ class AssistantService:
 
         # Format assistants (CDN URLs)
         formatted_assistants = self._format_assistants(assistants)
+        await self._attach_latest_versions(formatted_assistants)
 
         next_cursor = None
         if has_more and formatted_assistants:
@@ -180,6 +183,30 @@ class AssistantService:
             "next_cursor": next_cursor,
             "has_more": has_more
         }
+
+    async def _attach_latest_versions(self, assistants: List[Assistant]) -> None:
+        """Attach latest assistant_versions records to assistant objects."""
+        assistant_ids = [assistant.id for assistant in assistants if assistant.id]
+        if not assistant_ids:
+            return
+
+        stmt = (
+            select(AssistantVersion)
+            .where(AssistantVersion.assistant_id.in_(assistant_ids))
+            .order_by(AssistantVersion.assistant_id, desc(AssistantVersion.created_at))
+        )
+        result = await self.session.execute(stmt)
+
+        latest_versions = {}
+        for version in result.scalars().all():
+            key = str(version.assistant_id)
+            if key not in latest_versions:
+                latest_versions[key] = version
+
+        for assistant in assistants:
+            latest = latest_versions.get(str(assistant.id))
+            if latest:
+                set_committed_value(assistant, "versions", [latest])
 
     def _format_assistants(self, assistants: List[Assistant]) -> List[Assistant]:
         """Format assistant data, resolving avatar, prompt_file and source_url
@@ -213,7 +240,7 @@ class AssistantService:
 
             cloned = Assistant(**ast_dict)
             if hasattr(assistant, "versions"):
-                cloned.versions = assistant.versions
+                set_committed_value(cloned, "versions", assistant.versions)
 
             cloned.avatar = _resolve(cloned.avatar)
             cloned.prompt_file = _resolve(cloned.prompt_file)

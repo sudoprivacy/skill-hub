@@ -121,14 +121,13 @@ class AssistantCreateRequest:
 
         return data
 
-    def to_version_data(self, assistant_id: str, source_url: str, checksum: str, readme_content: Optional[str] = None) -> Dict[str, Any]:
+    def to_version_data(self, assistant_id: str, source_url: str, checksum: str) -> Dict[str, Any]:
         return {
             "assistant_id": assistant_id,
             "version": self.version,
             "source_url": source_url,
             "checksum": checksum,
             "changelog": self.changelog,
-            "readme_content": readme_content,
         }
 
 @dataclass
