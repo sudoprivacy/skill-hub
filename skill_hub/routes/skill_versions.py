@@ -19,6 +19,7 @@ from skill_hub.utils.content_storage import (
     cos_base_url,
     is_local_mode as is_local_content_mode,
     local_path_for as content_local_path,
+    store_object as store_content_object,
 )
 from skill_hub.api.exceptions import BadRequestException, NotFoundException
 
@@ -71,25 +72,27 @@ async def create_skill_version():
                 if not skill:
                     raise BadRequestException(message=f"Skill with ID {skill_id} not found")
 
-            # 4. Upload zip to COS
-            cos_client = ObjectStorageClient(config)
-            bucket_name = cos_bucket_name()
-
+            # 4. Upload zip to storage (local content dir or COS)
             # Use original skill_id for path matching existing pattern
             skill_object_key = f"skill-hub/{skill_id}/{version}/{skill_file.filename}"
 
-            if cos_client.client:
-                success = cos_client.upload_file(
-                    bucket_name=bucket_name,
-                    local_file_path=skill_file_path,
-                    object_key=skill_object_key
-                )
-                if not success:
-                    raise Exception("Failed to upload skill package to object storage")
+            if is_local_content_mode():
+                store_content_object(skill_file_path, skill_object_key)
             else:
-                logger.warning("ObjectStorageClient not initialized, skipping COS upload")
-                # Fallback for local testing if COS not configured
-                skill_object_key = f"/uploads/skills/{skill_id}/{version}/{skill_file.filename}"
+                cos_client = ObjectStorageClient(config)
+                bucket_name = cos_bucket_name()
+                if cos_client.client:
+                    success = cos_client.upload_file(
+                        bucket_name=bucket_name,
+                        local_file_path=skill_file_path,
+                        object_key=skill_object_key
+                    )
+                    if not success:
+                        raise Exception("Failed to upload skill package to object storage")
+                else:
+                    logger.warning("ObjectStorageClient not initialized, skipping COS upload")
+                    # Fallback for local testing if COS not configured
+                    skill_object_key = f"/uploads/skills/{skill_id}/{version}/{skill_file.filename}"
 
         finally:
             # Cleanup temp files
