@@ -7,6 +7,7 @@ from quart_schema import QuartSchema, Info
 from skill_hub.api.exceptions import register_error_handlers
 from skill_hub.api.auth import AuthMiddleware
 from skill_hub.routes.routes import register_routes
+from skill_hub.utils.content_storage import ensure_default_icon
 
 
 def create_app(config: Config) -> Quart:
@@ -54,6 +55,10 @@ def create_app(config: Config) -> Quart:
         protected_prefixes=[config.api_prefix]
     )
     
+    # Seed the default skill icon to local content storage (local mode only;
+    # no-op in COS mode). Idempotent — won't overwrite a custom icon.
+    ensure_default_icon()
+
     # Register routes
     register_routes(app, config)
     
