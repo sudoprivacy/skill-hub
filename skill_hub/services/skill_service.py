@@ -228,14 +228,15 @@ class SkillService:
                 cloned_skill.versions = skill.versions
             cloned_skills.append(cloned_skill)
             
-        # Replace empty icon with default. The base URL is sourced from the
-        # SKILL_HUB_COS_BASE_URL env var (see .env.example / Config) rather
-        # than being hardcoded here.
-        base_url = _get_cos_base_url()
+        # Replace empty icon with default and resolve via the unified
+        # content_storage helper so the URL respects local-content mode
+        # (SKILL_HUB_CONTENT_BASE_URL) when set, falling back to the COS
+        # base URL (SKILL_HUB_COS_BASE_URL) otherwise.
+        from skill_hub.utils.content_storage import resolve_source_url
         default_icon = _DEFAULT_ICON_PATH
         for skill in cloned_skills:
             icon_path = skill.icon if skill.icon else default_icon
-            skill.icon = f"{base_url}/{icon_path}" if base_url else icon_path
+            skill.icon = resolve_source_url(icon_path)
                 
         has_more = len(cloned_skills) > limit
         if has_more:

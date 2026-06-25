@@ -3,10 +3,11 @@
 When the hub is configured for local content mode (SKILL_HUB_CONTENT_BASE_URL
 set), skill `.zip` packages and icons are written under
 `<SKILL_HUB_DATA_DIR>/content/<object_key>` and served back by the
-`GET /api/skills/content/<key>` route, instead of being uploaded to Tencent
-COS. This keeps the on-prem deployment fully self-contained (no external
-object storage), while leaving the public/COS deployment behaviour unchanged
-when SKILL_HUB_CONTENT_BASE_URL is empty.
+unauthenticated `GET /public/<key>` route (see PUBLIC_CONTENT_PREFIX
+below), instead of being uploaded to Tencent COS. This keeps the on-prem
+deployment fully self-contained (no external object storage), while leaving
+the public/COS deployment behaviour unchanged when
+SKILL_HUB_CONTENT_BASE_URL is empty.
 
 The functions here read configuration straight from the environment so they
 can be used both from request handlers and from model `to_dict()` methods
@@ -24,6 +25,17 @@ logger = logging.getLogger(__name__)
 # mode nor an explicit COS base URL is configured, source_url values are
 # prefixed with this (matches the historical hard-coded value).
 _DEFAULT_COS_BASE_URL = "https://sudowork-hub-1309794936.cos.ap-beijing.myqcloud.com"
+
+# URL prefix for unauthenticated local-mode content delivery.
+# Registered as a Quart blueprint at this exact prefix in routes.py; the
+# global AuthMiddleware only protects `config.api_prefix` (`/api`), so this
+# prefix is naturally outside auth scope (browsers can load <img> etc.).
+PUBLIC_CONTENT_PREFIX = "/public"
+
+# Object key of the default skill icon used by SkillService.list_all_cursor()
+# fallback. In COS mode the object is pre-seeded by ops; in local mode the
+# hub itself seeds it from skill_hub/resources/default.png at startup.
+DEFAULT_ICON_KEY = "skill-hub/icons/default.png"
 
 
 def _data_dir() -> str:
@@ -98,8 +110,8 @@ def resolve_source_url(source_url: str) -> str:
     key = source_url.lstrip("/")
     base = content_base_url()
     if base:
-        # Served by this hub's download route.
-        return f"{base}{api_prefix()}/skills/content/{key}"
+        # Served by this hub's unauthenticated public route.
+        return f"{base}{PUBLIC_CONTENT_PREFIX}/{key}"
     # Legacy COS behaviour.
     return f"{cos_base_url()}/{key}"
 
@@ -129,4 +141,29 @@ def resolve_local_only(object_key: str) -> str:
     base = content_base_url()
     if not base:
         return object_key  # COS/default mode: unchanged (client resolves)
-    return f"{base}{api_prefix()}/skills/content/{object_key.lstrip('/')}"
+    return f"{base}{PUBLIC_CONTENT_PREFIX}/{object_key.lstrip('/')}"
+
+
+def ensure_default_icon() -> None:
+    """Seed the default skill icon to local content storage on startup.
+
+    In local content mode the hub itself serves the default icon (used by
+    SkillService.list_all_cursor() fallback). The seed file is packaged in
+    the repository at ``skill_hub/resources/default.png`` and copied into
+    ``<data_dir>/content/skill-hub/icons/default.png`` on first start.
+
+    Idempotent: skips if the destination already exists (preserves any
+    operator-customized icon). No-op in COS/default mode.
+    """
+    if not is_local_mode():
+        return
+    dest = local_path_for(DEFAULT_ICON_KEY)
+    if os.path.isfile(dest):
+        return
+    src = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "resources", "default.png"))
+    if not os.path.isfile(src):
+        logger.warning("Default icon resource not found at %s; skipping seed", src)
+        return
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    shutil.copyfile(src, dest)
+    logger.info("Seeded default icon to %s", dest)
