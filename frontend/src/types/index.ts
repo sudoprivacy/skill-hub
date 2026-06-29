@@ -41,6 +41,7 @@ export interface Skill {
   status: number;
   sort_order?: number;
   creator_id?: string | null;
+  creator_name?: string | null;
   core_features?: string;
   applicable_scenarios?: string;
   created_at?: string;
@@ -63,6 +64,7 @@ export interface Assistant {
   categories?: string[] | null;
   status: number;
   creator_id?: string | null;
+  creator_name?: string | null;
   skills?: string[];
   createdAt?: string;
   updatedAt?: string;

@@ -179,7 +179,9 @@ class Skill(Base):
     
     # Relationships (use string reference to avoid circular import)
     versions = relationship("SkillVersion", back_populates="skill", cascade="all, delete-orphan", lazy="selectin")
-    
+    # Eager-load the creator so to_dict can expose the username cheaply.
+    creator = relationship("User", lazy="selectin", foreign_keys=[creator_id])
+
     def to_dict(self) -> dict:
         """Convert skill to dictionary representation
         
@@ -204,6 +206,7 @@ class Skill(Base):
             "status": self.status,
             "sort_order": self.sort_order,
             "creator_id": str(self.creator_id) if self.creator_id else None,
+            "creator_name": self.creator.username if self.creator else None,
             "core_features": self.core_features,
             "applicable_scenarios": self.applicable_scenarios,
             "created_at": self.created_at.isoformat() if self.created_at else None,

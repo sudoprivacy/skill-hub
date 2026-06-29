@@ -136,6 +136,13 @@ export default function SkillsPage() {
       render: (v: number) => v ?? 0,
     },
     {
+      title: "创建人",
+      dataIndex: "creator_name",
+      key: "creator_name",
+      width: 110,
+      render: (v: string) => v || "admin",
+    },
+    {
       title: "更新时间",
       dataIndex: "updated_at",
       key: "updated_at",

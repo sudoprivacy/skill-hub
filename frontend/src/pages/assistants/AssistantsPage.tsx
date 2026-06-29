@@ -131,6 +131,13 @@ export default function AssistantsPage() {
       render: (s: number) => <StatusTag status={s} />,
     },
     {
+      title: "创建人",
+      dataIndex: "creator_name",
+      key: "creator_name",
+      width: 110,
+      render: (v: string) => v || "admin",
+    },
+    {
       title: "更新时间",
       dataIndex: "updatedAt",
       key: "updatedAt",
