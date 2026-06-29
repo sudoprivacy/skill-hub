@@ -40,6 +40,7 @@ export interface Skill {
   download_count?: number;
   status: number;
   sort_order?: number;
+  creator_id?: string | null;
   core_features?: string;
   applicable_scenarios?: string;
   created_at?: string;
@@ -61,6 +62,7 @@ export interface Assistant {
   sortOrder?: number;
   categories?: string[] | null;
   status: number;
+  creator_id?: string | null;
   skills?: string[];
   createdAt?: string;
   updatedAt?: string;
@@ -81,6 +83,18 @@ export interface Category {
   order_index?: number;
   icon_url?: string | null;
   type: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+// 用户
+export interface User {
+  id: string;
+  username: string;
+  display_name?: string | null;
+  role: string; // "admin" | "user"
+  role_id?: string;
+  is_active: boolean;
   created_at?: string;
   updated_at?: string;
 }

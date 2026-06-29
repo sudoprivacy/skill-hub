@@ -147,7 +147,15 @@ class Skill(Base):
         nullable=False,
         comment="Sort order for display priority"
     )
-    
+
+    creator_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+        comment="User who created this skill (null for system/imported)"
+    )
+
     # Timestamps
     created_at = Column(
         DateTime(timezone=True),
@@ -195,6 +203,7 @@ class Skill(Base):
             "download_count": self.download_count,
             "status": self.status,
             "sort_order": self.sort_order,
+            "creator_id": str(self.creator_id) if self.creator_id else None,
             "core_features": self.core_features,
             "applicable_scenarios": self.applicable_scenarios,
             "created_at": self.created_at.isoformat() if self.created_at else None,
@@ -282,7 +291,14 @@ class Skill(Base):
             
         if "sort_order" in data:
             skill.sort_order = data["sort_order"]
-        
+
+        if "creator_id" in data and data["creator_id"]:
+            skill.creator_id = (
+                uuid.UUID(data["creator_id"])
+                if isinstance(data["creator_id"], str)
+                else data["creator_id"]
+            )
+
         # Handle timestamps
         if "created_at" in data and data["created_at"]:
             if isinstance(data["created_at"], str):

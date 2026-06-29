@@ -1,24 +1,27 @@
 import axios from "axios";
 import { API_BASE } from "@/constants";
+import { request } from "./http";
+import type { CurrentUser } from "@/store/auth";
 
-interface VerifyResult {
-  authenticated: boolean;
-  message?: string;
+interface LoginResult {
+  token: string;
+  user: CurrentUser;
 }
 
-// 校验口令是否有效：用独立请求（带上待验证的 token），不走全局拦截器，
-// 这样登录页校验失败时不会触发"跳转登录"的副作用。
-export async function verifyToken(token: string): Promise<boolean> {
-  try {
-    const resp = await axios.get<{ success: boolean; data: VerifyResult }>(
-      `${API_BASE}/auth/verify`,
-      {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 15000,
-      }
-    );
-    return Boolean(resp.data?.success && resp.data?.data?.authenticated);
-  } catch {
-    return false;
-  }
+// 账号密码登录。用独立 axios（不走全局拦截器），以便登录失败时自行处理错误。
+export async function login(
+  username: string,
+  password: string
+): Promise<LoginResult> {
+  const resp = await axios.post<{ success: boolean; data: LoginResult; message: string }>(
+    `${API_BASE}/auth/login`,
+    { username, password },
+    { timeout: 15000 }
+  );
+  return resp.data.data;
+}
+
+// 获取当前登录用户（带 token，走全局拦截器：失效会自动登出跳登录）
+export function fetchMe(): Promise<CurrentUser> {
+  return request<CurrentUser>({ url: "/auth/me", method: "GET" });
 }

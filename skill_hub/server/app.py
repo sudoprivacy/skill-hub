@@ -61,6 +61,12 @@ def create_app(config: Config) -> Quart:
 
     # Register routes
     register_routes(app, config)
+
+    # Ensure auth schema + seed roles/admin once the DB engine is ready.
+    @app.before_serving
+    async def _bootstrap_auth():
+        from skill_hub.db.bootstrap import bootstrap_auth
+        await bootstrap_auth(config)
     
     # Add health check endpoint
     @app.route("/health")

@@ -2,9 +2,55 @@
 
 from quart import Blueprint, request, current_app
 from skill_hub.api.responses import success_response, error_response
-from skill_hub.api.auth import get_token_from_header, verify_token
+from skill_hub.api.auth import (
+    get_token_from_header,
+    verify_token,
+    issue_user_token,
+    get_current_user,
+)
+from skill_hub.api.exceptions import BadRequestException, UnauthorizedException
+from skill_hub.db.database import get_session
+from skill_hub.services.user_service import UserService
 
 auth_router = Blueprint("auth", __name__)
+
+
+@auth_router.route("/login", methods=["POST"])
+async def login():
+    """Username + password login. Returns a signed token and user info."""
+    data = await request.get_json(silent=True) or {}
+    username = (data.get("username") or "").strip()
+    password = data.get("password") or ""
+    if not username or not password:
+        raise BadRequestException(message="用户名和密码不能为空")
+
+    async with get_session() as session:
+        user_service = UserService(session)
+        user = await user_service.authenticate(username, password)
+        if not user:
+            raise UnauthorizedException(message="用户名或密码错误")
+        role_name = user.role.name if user.role else "user"
+        token = issue_user_token(user.id, user.username, role_name)
+        payload = {
+            "token": token,
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "display_name": user.display_name,
+                "role": role_name,
+            },
+        }
+
+    return success_response(data=payload, message="登录成功")
+
+
+@auth_router.route("/me", methods=["GET"])
+async def me():
+    """Return the current authenticated identity."""
+    user = get_current_user()
+    if not user:
+        raise UnauthorizedException(message="未登录")
+    return success_response(data=user, message="OK")
 
 @auth_router.route("/verify", methods=["GET"])
 async def verify():

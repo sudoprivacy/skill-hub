@@ -29,6 +29,7 @@ import {
 } from "@/api/assistants";
 import { useCursorList } from "@/hooks/useCursorList";
 import { useCategories } from "@/hooks/useCategories";
+import { useAuthStore } from "@/store/auth";
 import StatusTag from "@/components/StatusTag";
 import AssistantFormDrawer from "./AssistantFormDrawer";
 import { STATUS_OPTIONS, CATEGORY_TYPE, DEFAULT_PAGE_SIZE } from "@/constants";
@@ -39,6 +40,10 @@ export default function AssistantsPage() {
   const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const { options: categoryOptions } = useCategories(CATEGORY_TYPE.ASSISTANT);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
+  const myId = useAuthStore((s) => s.user?.id);
+  const canManage = (row: Assistant) =>
+    isAdmin || (Boolean(row.creator_id) && row.creator_id === myId);
 
   const [queryInput, setQueryInput] = useState("");
   const [filters, setFilters] = useState<{
@@ -138,19 +143,21 @@ export default function AssistantsPage() {
       width: 200,
       render: (_, row) => (
         <Space size={4}>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditing(row);
-              setFormMode("edit");
-              setFormOpen(true);
-            }}
-          >
-            编辑
-          </Button>
-          {row.status !== 1 && (
+          {canManage(row) && (
+            <Button
+              type="link"
+              size="small"
+              icon={<EditOutlined />}
+              onClick={() => {
+                setEditing(row);
+                setFormMode("edit");
+                setFormOpen(true);
+              }}
+            >
+              编辑
+            </Button>
+          )}
+          {isAdmin && row.status !== 1 && (
             <Popconfirm
               title="确认审核上线该助手？"
               onConfirm={() => approve.mutate(row.id)}
@@ -160,14 +167,16 @@ export default function AssistantsPage() {
               </Button>
             </Popconfirm>
           )}
-          <Popconfirm
-            title="删除后不可恢复，确认删除？"
-            onConfirm={() => remove.mutate(row.id)}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              删除
-            </Button>
-          </Popconfirm>
+          {canManage(row) && (
+            <Popconfirm
+              title="删除后不可恢复，确认删除？"
+              onConfirm={() => remove.mutate(row.id)}
+            >
+              <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+                删除
+              </Button>
+            </Popconfirm>
+          )}
         </Space>
       ),
     },

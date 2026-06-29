@@ -1,32 +1,36 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button, Card, Form, Input, Typography, App as AntdApp } from "antd";
-import { LockOutlined } from "@ant-design/icons";
-import { verifyToken } from "@/api/auth";
+import { UserOutlined, LockOutlined } from "@ant-design/icons";
+import { login } from "@/api/auth";
 import { useAuthStore } from "@/store/auth";
 
 const { Title, Paragraph } = Typography;
 
-// 登录页：复用后端固定口令。填入口令 → 调 /auth/verify 校验 → 通过则保存并进入后台。
+// 登录页：账号密码登录。
 export default function LoginPage() {
   const navigate = useNavigate();
-  const setToken = useAuthStore((s) => s.setToken);
+  const setAuth = useAuthStore((s) => s.setAuth);
   const { message } = AntdApp.useApp();
   const [loading, setLoading] = useState(false);
 
-  const onFinish = async (values: { token: string }) => {
-    const token = values.token.trim();
-    if (!token) return;
+  const onFinish = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      const ok = await verifyToken(token);
-      if (ok) {
-        setToken(token);
-        message.success("登录成功");
-        navigate("/skills", { replace: true });
-      } else {
-        message.error("口令不正确，请重试");
-      }
+      const { token, user } = await login(
+        values.username.trim(),
+        values.password
+      );
+      setAuth(token, user);
+      message.success("登录成功");
+      navigate("/skills", { replace: true });
+    } catch (err: unknown) {
+      const e = err as { response?: { status?: number; data?: { message?: string } } };
+      const msg =
+        e?.response?.status === 401
+          ? "用户名或密码错误"
+          : e?.response?.data?.message || "登录失败，请稍后重试";
+      message.error(msg);
     } finally {
       setLoading(false);
     }
@@ -47,20 +51,32 @@ export default function LoginPage() {
           Skill Hub 管理后台
         </Title>
         <Paragraph type="secondary" style={{ textAlign: "center" }}>
-          请输入访问口令登录
+          请使用账号密码登录
         </Paragraph>
         <Form layout="vertical" onFinish={onFinish} requiredMark={false}>
           <Form.Item
-            name="token"
-            label="访问口令"
-            rules={[{ required: true, message: "请输入访问口令" }]}
+            name="username"
+            label="用户名"
+            rules={[{ required: true, message: "请输入用户名" }]}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="请输入用户名"
+              size="large"
+              autoFocus
+              autoComplete="username"
+            />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="密码"
+            rules={[{ required: true, message: "请输入密码" }]}
           >
             <Input.Password
               prefix={<LockOutlined />}
-              placeholder="请输入口令"
+              placeholder="请输入密码"
               size="large"
-              autoFocus
-              onPressEnter={() => undefined}
+              autoComplete="current-password"
             />
           </Form.Item>
           <Form.Item style={{ marginBottom: 0 }}>

@@ -6,7 +6,12 @@ import logging
 from functools import wraps
 from quart import Blueprint, request, current_app
 
-from skill_hub.api.auth import token_required
+from skill_hub.api.auth import (
+    token_required,
+    get_current_user,
+    require_admin,
+    require_owner_or_admin,
+)
 from skill_hub.schemas.skill_schemas import SkillCreateRequest, SkillUpdateRequest
 from skill_hub.services.skill_service import SkillService
 from skill_hub.services.skill_version_service import SkillVersionService
@@ -511,6 +516,11 @@ async def add_skill(skill: SkillCreateRequest):
         if icon_object_key:
             skill_data["icon"] = icon_object_key
 
+        # Attribute ownership to the current user (None for system token).
+        current = get_current_user()
+        if current and current.get("id"):
+            skill_data["creator_id"] = current["id"]
+
         # Create or update skill
         existing_skill = await skill_service.get_by_name(skill.name, skill.tenant_id)
         if not existing_skill:
@@ -619,6 +629,11 @@ async def update_skill(skill_id: str):
 
     async with get_session() as session:
         skill_service = SkillService(session)
+        target = await skill_service.get_by_id(skill_id)
+        if not target:
+            raise NotFoundException(message="Skill not found")
+        require_owner_or_admin(target.creator_id)
+
         skill = await skill_service.update(skill_id, req.to_update_data())
         if not skill:
             raise NotFoundException(message="Skill not found")
@@ -642,6 +657,7 @@ async def approve_skill(skill_id: str):
 
     * `skill_id` (str): 要审批的技能的唯一标识符 (UUID)。
     """
+    require_admin()
     async with get_session() as session:
         skill_service = SkillService(session)
 
@@ -671,6 +687,11 @@ async def delete_skill(skill_id: str):
     """
     async with get_session() as session:
         skill_service = SkillService(session)
+        target = await skill_service.get_by_id(skill_id)
+        if not target:
+            raise NotFoundException(message="Skill not found")
+        require_owner_or_admin(target.creator_id)
+
         deleted = await skill_service.delete(skill_id)
         if not deleted:
             raise NotFoundException(message="Skill not found")

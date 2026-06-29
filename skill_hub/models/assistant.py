@@ -113,6 +113,14 @@ class Assistant(Base):
         comment="Array of associated skill IDs"
     )
 
+    creator_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+        comment="User who created this assistant (null for system/imported)"
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.utcnow,
@@ -172,6 +180,7 @@ class Assistant(Base):
             "sortOrder": self.sort_order,
             "categories": self.categories,
             "status": self.status,
+            "creator_id": str(self.creator_id) if self.creator_id else None,
             "skills": [str(s) for s in self.skills] if self.skills else [],
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,

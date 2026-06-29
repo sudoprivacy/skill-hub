@@ -11,6 +11,7 @@ from skill_hub.routes.categories import categories_router
 from skill_hub.routes.assistants import assistants_router
 from skill_hub.routes.public import public_router
 from skill_hub.routes.admin_ui import admin_ui_router
+from skill_hub.routes.users import users_router
 from skill_hub.utils.content_storage import PUBLIC_CONTENT_PREFIX
 
 def register_routes(app: Quart, config: Config) -> None:
@@ -37,6 +38,9 @@ def register_routes(app: Quart, config: Config) -> None:
 
     # Register assistants routes
     app.register_blueprint(assistants_router, url_prefix=f"{config.api_prefix}/assistants")
+
+    # Register user management routes (admin only)
+    app.register_blueprint(users_router, url_prefix=f"{config.api_prefix}/users")
 
     # Register unauthenticated public content routes (local mode only).
     # Mounted outside config.api_prefix so AuthMiddleware does not protect it.

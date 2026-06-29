@@ -3,7 +3,7 @@
 import logging
 from quart import Blueprint, request
 
-from skill_hub.api.auth import token_required
+from skill_hub.api.auth import token_required, require_admin
 from skill_hub.schemas.category_schemas import CategoryCreateRequest, CategoryUpdateRequest
 from skill_hub.services.category_service import CategoryService
 from skill_hub.db.database import get_session
@@ -81,6 +81,7 @@ async def get_category(category_id: str):
 @token_required
 async def update_category(category_id: str):
     """Update an existing category."""
+    require_admin()
     data = await request.get_json()
     if not data:
         raise BadRequestException(message="Invalid JSON payload")
@@ -118,6 +119,7 @@ async def update_category(category_id: str):
 @token_required
 async def delete_category(category_id: str):
     """Delete a category by ID."""
+    require_admin()
     async with get_session() as session:
         category_service = CategoryService(session)
         deleted = await category_service.delete(category_id)
@@ -130,6 +132,7 @@ async def delete_category(category_id: str):
 @token_required
 async def create_category():
     """Create a new category"""
+    require_admin()
     data = await request.get_json()
     if not data:
         raise BadRequestException(message="Invalid JSON payload")
