@@ -1,7 +1,28 @@
 # syntax=docker/dockerfile:1.6
 
 # =========================
-# Stage 1: builder
+# Stage 1: frontend builder
+# Builds the admin SPA (frontend/) into skill_hub/static/admin.
+# =========================
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /app/frontend
+
+# Install pnpm (matches the committed pnpm-lock.yaml major version)
+RUN npm install -g pnpm@10
+
+# Install dependencies first (better layer caching: only re-runs when manifests change)
+COPY frontend/package.json frontend/pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
+
+# Copy the rest of the frontend source and build.
+# vite.config.ts outputs to ../skill_hub/static/admin → /app/skill_hub/static/admin
+COPY frontend/ ./
+RUN pnpm build
+
+
+# =========================
+# Stage 2: python builder
 # =========================
 FROM python:3.11-slim AS builder
 
@@ -27,7 +48,7 @@ RUN pip install --upgrade pip \
 
 
 # =========================
-# Stage 2: runtime
+# Stage 3: runtime
 # =========================
 FROM python:3.11-slim AS runtime
 
@@ -58,8 +79,13 @@ WORKDIR /app
 # Copy installed Python dependencies from the builder stage
 COPY --from=builder /install /usr/local
 
-# Copy application source
+# Copy application source (skill_hub/static/admin is .dockerignored, so the
+# admin bundle comes solely from the frontend-builder stage below)
 COPY --chown=skillhub:skillhub . /app
+
+# Copy the freshly built admin SPA from the frontend stage
+COPY --from=frontend-builder --chown=skillhub:skillhub \
+    /app/skill_hub/static/admin /app/skill_hub/static/admin
 
 # Ensure the data directory exists and is writable
 RUN mkdir -p /app/data \

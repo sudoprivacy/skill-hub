@@ -75,6 +75,11 @@ htmlcov/
 .pytype/
 cython_debug/
 
+# Frontend deps & build output (admin SPA is built inside the Docker image)
+frontend/node_modules/
+frontend/dist/
+skill_hub/static/admin/
+
 # Local data / user-generated artifacts
 data/
 /spider/
