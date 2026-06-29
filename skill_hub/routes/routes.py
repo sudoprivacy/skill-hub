@@ -10,6 +10,7 @@ from skill_hub.routes.skill_versions import skill_versions_router
 from skill_hub.routes.categories import categories_router
 from skill_hub.routes.assistants import assistants_router
 from skill_hub.routes.public import public_router
+from skill_hub.routes.admin_ui import admin_ui_router
 from skill_hub.utils.content_storage import PUBLIC_CONTENT_PREFIX
 
 def register_routes(app: Quart, config: Config) -> None:
@@ -40,6 +41,10 @@ def register_routes(app: Quart, config: Config) -> None:
     # Register unauthenticated public content routes (local mode only).
     # Mounted outside config.api_prefix so AuthMiddleware does not protect it.
     app.register_blueprint(public_router, url_prefix=PUBLIC_CONTENT_PREFIX)
+
+    # Register admin web console (SPA) at /admin, outside config.api_prefix
+    # so the HTML/JS/CSS load without a bearer token.
+    app.register_blueprint(admin_ui_router, url_prefix="/admin")
 
 
     # The /docs endpoint is now handled by quart-schema for Swagger UI
