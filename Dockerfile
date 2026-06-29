@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1.6
-
 # =========================
 # Stage 1: frontend builder
 # Builds the admin SPA (frontend/) into skill_hub/static/admin.
