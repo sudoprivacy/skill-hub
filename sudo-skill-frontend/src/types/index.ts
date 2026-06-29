@@ -73,6 +73,18 @@ export interface Assistant {
   };
 }
 
+// 分类（完整对象）。type: 0=技能 1=助手
+export interface Category {
+  id: string;
+  name: string;
+  display_name: string;
+  order_index?: number;
+  icon_url?: string | null;
+  type: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
 // 统一响应信封
 export interface ApiEnvelope<T> {
   success: boolean;

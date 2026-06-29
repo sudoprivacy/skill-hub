@@ -1,60 +1,173 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { PageContainer } from "@ant-design/pro-components";
 import {
   Card,
   Segmented,
   Button,
   Space,
-  Tag,
-  Empty,
-  Spin,
+  Table,
   Modal,
   Form,
   Input,
   InputNumber,
-  Alert,
+  Popconfirm,
+  Avatar,
   App as AntdApp,
 } from "antd";
-import { PlusOutlined, ReloadOutlined } from "@ant-design/icons";
+import {
+  PlusOutlined,
+  ReloadOutlined,
+  EditOutlined,
+  DeleteOutlined,
+  PictureOutlined,
+} from "@ant-design/icons";
+import type { ColumnsType } from "antd/es/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { listCategories, createCategory } from "@/api/categories";
+import {
+  listCategoriesAdmin,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+} from "@/api/categories";
 import { CATEGORY_TYPE } from "@/constants";
+import { resolveImageUrl } from "@/utils/img";
+import type { Category } from "@/types";
 
 export default function CategoriesPage() {
   const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const [type, setType] = useState<number>(CATEGORY_TYPE.SKILL);
-  const [addOpen, setAddOpen] = useState(false);
+
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Category | null>(null);
   const [form] = Form.useForm();
 
   const { data, isFetching } = useQuery({
-    queryKey: ["categories", type],
-    queryFn: () => listCategories(type),
+    queryKey: ["categories-admin", type],
+    queryFn: () => listCategoriesAdmin(type),
   });
 
-  const create = useMutation({
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editing) {
+      form.setFieldsValue({
+        name: editing.name,
+        display_name: editing.display_name,
+        order_index: editing.order_index ?? 0,
+        icon_url: editing.icon_url ?? "",
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ order_index: 0 });
+    }
+  }, [modalOpen, editing, form]);
+
+  const invalidate = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: ["categories-admin", type] }),
+      // 同时刷新筛选/表单用的名称列表
+      queryClient.invalidateQueries({ queryKey: ["categories", type] }),
+    ]);
+
+  const save = useMutation({
     mutationFn: (values: {
       name: string;
       display_name: string;
       order_index?: number;
       icon_url?: string;
-    }) => createCategory({ ...values, type }),
-    onSuccess: () => {
-      message.success("分类创建成功");
-      setAddOpen(false);
-      form.resetFields();
-      queryClient.invalidateQueries({ queryKey: ["categories", type] });
+    }) =>
+      editing
+        ? updateCategory(editing.id, {
+            name: values.name,
+            display_name: values.display_name,
+            order_index: values.order_index,
+            icon_url: values.icon_url,
+          })
+        : createCategory({ ...values, type }),
+    onSuccess: async () => {
+      message.success(editing ? "分类已更新" : "分类已创建");
+      setModalOpen(false);
+      setEditing(null);
+      await invalidate();
     },
   });
 
+  const remove = useMutation({
+    mutationFn: (id: string) => deleteCategory(id),
+    onSuccess: async () => {
+      message.success("分类已删除");
+      await invalidate();
+    },
+  });
+
+  const columns: ColumnsType<Category> = [
+    {
+      title: "图标",
+      dataIndex: "icon_url",
+      key: "icon_url",
+      width: 64,
+      render: (v: string) => (
+        <Avatar
+          shape="square"
+          src={resolveImageUrl(v)}
+          icon={<PictureOutlined />}
+          size={32}
+        />
+      ),
+    },
+    {
+      title: "显示名称",
+      dataIndex: "display_name",
+      key: "display_name",
+      render: (v: string) => <span style={{ fontWeight: 600 }}>{v}</span>,
+    },
+    { title: "标识(name)", dataIndex: "name", key: "name" },
+    {
+      title: "排序",
+      dataIndex: "order_index",
+      key: "order_index",
+      width: 80,
+      render: (v: number) => v ?? 0,
+    },
+    {
+      title: "更新时间",
+      dataIndex: "updated_at",
+      key: "updated_at",
+      width: 180,
+      render: (v: string) => (v ? new Date(v).toLocaleString() : "—"),
+    },
+    {
+      title: "操作",
+      key: "action",
+      width: 150,
+      render: (_, row) => (
+        <Space size={4}>
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => {
+              setEditing(row);
+              setModalOpen(true);
+            }}
+          >
+            编辑
+          </Button>
+          <Popconfirm
+            title="删除后不可恢复，确认删除？"
+            onConfirm={() => remove.mutate(row.id)}
+          >
+            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
+      ),
+    },
+  ];
+
   return (
     <PageContainer header={{ title: "分类管理" }}>
-      <Alert
-        type="info"
-        showIcon
-        style={{ marginBottom: 16 }}
-        message="后端当前仅支持分类的“查看”与“新增”，暂不支持修改/删除。"
-      />
       <Card>
         <Space style={{ marginBottom: 16 }} wrap>
           <Segmented
@@ -68,7 +181,9 @@ export default function CategoriesPage() {
           <Button
             icon={<ReloadOutlined />}
             onClick={() =>
-              queryClient.invalidateQueries({ queryKey: ["categories", type] })
+              queryClient.invalidateQueries({
+                queryKey: ["categories-admin", type],
+              })
             }
           >
             刷新
@@ -76,36 +191,38 @@ export default function CategoriesPage() {
           <Button
             type="primary"
             icon={<PlusOutlined />}
-            onClick={() => setAddOpen(true)}
+            onClick={() => {
+              setEditing(null);
+              setModalOpen(true);
+            }}
           >
             新增分类
           </Button>
         </Space>
 
-        {isFetching ? (
-          <Spin />
-        ) : data && data.length > 0 ? (
-          <Space size={[8, 12]} wrap>
-            {data.map((name) => (
-              <Tag key={name} color="blue" style={{ fontSize: 14, padding: "4px 10px" }}>
-                {name}
-              </Tag>
-            ))}
-          </Space>
-        ) : (
-          <Empty description="暂无分类" />
-        )}
+        <Table
+          rowKey="id"
+          columns={columns}
+          dataSource={data ?? []}
+          loading={isFetching}
+          pagination={false}
+          locale={{ emptyText: "暂无分类" }}
+        />
       </Card>
 
       <Modal
-        title="新增分类"
-        open={addOpen}
-        onCancel={() => setAddOpen(false)}
+        title={editing ? "编辑分类" : "新增分类"}
+        open={modalOpen}
+        onCancel={() => {
+          setModalOpen(false);
+          setEditing(null);
+        }}
         onOk={async () => {
           const values = await form.validateFields();
-          create.mutate(values);
+          save.mutate(values);
         }}
-        confirmLoading={create.isPending}
+        confirmLoading={save.isPending}
+        destroyOnClose
       >
         <Form form={form} layout="vertical">
           <Form.Item
@@ -122,7 +239,7 @@ export default function CategoriesPage() {
           >
             <Input placeholder="如 效率工具" />
           </Form.Item>
-          <Form.Item name="order_index" label="排序" initialValue={0}>
+          <Form.Item name="order_index" label="排序">
             <InputNumber style={{ width: "100%" }} />
           </Form.Item>
           <Form.Item name="icon_url" label="图标链接（可选）">
