@@ -110,18 +110,12 @@ export default function SkillDetailDrawer({ open, skillId, onClose }: Props) {
       ) : (
         <>
           <Descriptions column={1} bordered size="small">
-            <Descriptions.Item label="名称">{skill.name}</Descriptions.Item>
+            <Descriptions.Item label="Slug">{skill.name}</Descriptions.Item>
             <Descriptions.Item label="显示名称">
               {skill.display_name}
             </Descriptions.Item>
             <Descriptions.Item label="状态">
               <StatusTag status={skill.status} />
-            </Descriptions.Item>
-            <Descriptions.Item label="Emoji">
-              {skill.emoji || "—"}
-            </Descriptions.Item>
-            <Descriptions.Item label="主分类">
-              {skill.category || "—"}
             </Descriptions.Item>
             <Descriptions.Item label="分类">
               {skill.categories?.length
@@ -139,9 +133,6 @@ export default function SkillDetailDrawer({ open, skillId, onClose }: Props) {
             </Descriptions.Item>
             <Descriptions.Item label="适用场景">
               {skill.applicable_scenarios || "—"}
-            </Descriptions.Item>
-            <Descriptions.Item label="主页">
-              {skill.homepage || "—"}
             </Descriptions.Item>
           </Descriptions>
 

@@ -48,10 +48,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         name: skill.name,
         display_name: skill.display_name,
         status: skill.status,
-        emoji: skill.emoji,
-        category: skill.category,
         categories: skill.categories ?? [],
-        homepage: skill.homepage,
         sort_order: skill.sort_order ?? 0,
         description: skill.description,
         core_features: skill.core_features,
@@ -98,10 +95,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       const payload: Record<string, unknown> = {
         display_name: values.display_name,
         status: values.status,
-        emoji: values.emoji,
-        category: values.category,
         categories: values.categories ?? [],
-        homepage: values.homepage,
         sort_order: values.sort_order,
         description: values.description,
         core_features: values.core_features,
@@ -148,8 +142,8 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       <Form form={form} layout="vertical">
         <Form.Item
           name="name"
-          label="名称（唯一标识）"
-          rules={[{ required: true, message: "请输入名称" }]}
+          label="Slug"
+          rules={[{ required: true, message: "请输入 Slug" }]}
         >
           <Input placeholder="如 weather-expert" disabled={mode === "edit"} />
         </Form.Item>
@@ -187,9 +181,6 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         <Form.Item name="status" label="状态">
           <Select options={STATUS_OPTIONS} />
         </Form.Item>
-        <Form.Item name="emoji" label="Emoji 图标">
-          <Input placeholder="如 🌦️" maxLength={10} />
-        </Form.Item>
         <Form.Item label="图标文件（.png/.svg，可选）">
           <Upload
             beforeUpload={() => false}
@@ -202,14 +193,6 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
             <Button icon={<UploadOutlined />}>选择图标</Button>
           </Upload>
         </Form.Item>
-        <Form.Item name="category" label="主分类">
-          <Select
-            allowClear
-            showSearch
-            placeholder="选择主分类"
-            options={categoryOptions}
-          />
-        </Form.Item>
         <Form.Item name="categories" label="分类（可多选/可输入）">
           <Select
             mode="tags"
@@ -217,9 +200,6 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
             placeholder="选择或输入分类"
             options={categoryOptions}
           />
-        </Form.Item>
-        <Form.Item name="homepage" label="主页链接">
-          <Input placeholder="https://..." />
         </Form.Item>
         <Form.Item name="sort_order" label="排序权重">
           <InputNumber style={{ width: "100%" }} />
@@ -244,9 +224,6 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
 function appendOptional(fd: FormData, values: Record<string, unknown>) {
   const keys = [
     "status",
-    "emoji",
-    "category",
-    "homepage",
     "sort_order",
     "description",
     "core_features",
