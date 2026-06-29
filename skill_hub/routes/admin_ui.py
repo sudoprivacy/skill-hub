@@ -3,7 +3,7 @@
 Registered at ``/admin`` (outside AuthMiddleware's ``/api`` scope so the
 HTML/JS/CSS load without a bearer token — the SPA itself attaches the token
 to its ``/api`` XHR calls). Serves the built frontend from
-``skill_hub/static/admin`` produced by ``sudo-skill-frontend`` (``pnpm build``).
+``skill_hub/static/admin`` produced by ``frontend`` (``pnpm build``).
 
 Behaviour:
 - An existing file under the build dir is served as-is (assets, favicon...).
@@ -43,7 +43,7 @@ async def _serve_index():
     if not _INDEX_FILE.is_file():
         return (
             "Admin UI is not built yet. Run `pnpm build` in "
-            "sudo-skill-frontend to generate skill_hub/static/admin.",
+            "frontend/ to generate skill_hub/static/admin.",
             503,
         )
     return await send_file(str(_INDEX_FILE))
