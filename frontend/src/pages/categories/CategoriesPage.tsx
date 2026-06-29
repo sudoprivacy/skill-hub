@@ -11,7 +11,6 @@ import {
   Input,
   InputNumber,
   Popconfirm,
-  Avatar,
   App as AntdApp,
 } from "antd";
 import {
@@ -19,7 +18,6 @@ import {
   ReloadOutlined,
   EditOutlined,
   DeleteOutlined,
-  PictureOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -30,7 +28,6 @@ import {
   deleteCategory,
 } from "@/api/categories";
 import { CATEGORY_TYPE } from "@/constants";
-import { resolveImageUrl } from "@/utils/img";
 import type { Category } from "@/types";
 
 export default function CategoriesPage() {
@@ -101,20 +98,6 @@ export default function CategoriesPage() {
   });
 
   const columns: ColumnsType<Category> = [
-    {
-      title: "图标",
-      dataIndex: "icon_url",
-      key: "icon_url",
-      width: 64,
-      render: (v: string) => (
-        <Avatar
-          shape="square"
-          src={resolveImageUrl(v)}
-          icon={<PictureOutlined />}
-          size={32}
-        />
-      ),
-    },
     {
       title: "显示名称",
       dataIndex: "display_name",
