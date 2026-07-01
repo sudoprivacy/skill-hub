@@ -8,6 +8,7 @@ from quart import Blueprint, request, current_app
 from skill_hub.api.auth import (
     token_required,
     get_current_user,
+    is_admin,
     require_admin,
     require_owner_or_admin,
 )
@@ -99,6 +100,7 @@ async def list_assistants_admin_cursor():
     mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
     current = get_current_user() if mine else None
     creator_id = current.get("id") if current else None
+    include_creatorless = mine and is_admin()
 
     if mine and not creator_id:
         return success_response(
@@ -115,6 +117,7 @@ async def list_assistants_admin_cursor():
             category=category if category else None,
             tenant_id=tenant_id,
             creator_id=creator_id,
+            include_creatorless=include_creatorless,
             status=status
         )
 

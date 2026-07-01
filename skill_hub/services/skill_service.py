@@ -5,7 +5,7 @@ import uuid
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy import select, update, delete, desc, func
+from sqlalchemy import select, update, delete, desc, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -127,6 +127,7 @@ class SkillService:
         categories: Optional[str] = None,
         author_id: Optional[str] = None,
         creator_id: Optional[str] = None,
+        include_creatorless: bool = False,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None,
         status: Optional[int] = 1
@@ -139,6 +140,7 @@ class SkillService:
             categories: Filter by categories
             author_id: Filter by author ID
             creator_id: Filter by creator user ID
+            include_creatorless: Include records with no creator when filtering by creator
             search: Search in name, display_name, and description
             tenant_id: Filter by tenant ID
             status: Filter by status. None means all statuses. Default is 1 (online).
@@ -173,7 +175,15 @@ class SkillService:
         if creator_id:
             try:
                 creator_uuid = uuid.UUID(creator_id)
-                stmt = stmt.where(Skill.creator_id == creator_uuid)
+                if include_creatorless:
+                    stmt = stmt.where(
+                        or_(
+                            Skill.creator_id == creator_uuid,
+                            Skill.creator_id.is_(None),
+                        )
+                    )
+                else:
+                    stmt = stmt.where(Skill.creator_id == creator_uuid)
             except ValueError:
                 return {"skills": [], "next_cursor": None, "has_more": False}
                 
