@@ -126,6 +126,7 @@ class SkillService:
         limit: int = 10,
         categories: Optional[str] = None,
         author_id: Optional[str] = None,
+        creator_id: Optional[str] = None,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None,
         status: Optional[int] = 1
@@ -137,6 +138,7 @@ class SkillService:
             limit: Items per page
             categories: Filter by categories
             author_id: Filter by author ID
+            creator_id: Filter by creator user ID
             search: Search in name, display_name, and description
             tenant_id: Filter by tenant ID
             status: Filter by status. None means all statuses. Default is 1 (online).
@@ -165,6 +167,13 @@ class SkillService:
             try:
                 author_uuid = uuid.UUID(author_id)
                 stmt = stmt.where(Skill.author_id == author_uuid)
+            except ValueError:
+                return {"skills": [], "next_cursor": None, "has_more": False}
+
+        if creator_id:
+            try:
+                creator_uuid = uuid.UUID(creator_id)
+                stmt = stmt.where(Skill.creator_id == creator_uuid)
             except ValueError:
                 return {"skills": [], "next_cursor": None, "has_more": False}
                 

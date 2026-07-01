@@ -200,6 +200,7 @@ async def list_skills_admin_cursor():
     * `query` (str, 可选): 用于匹配技能名称或描述的搜索关键字。
     * `categories` (str, 可选): 用于过滤技能列表的技能分类。
     * `status` (int, 可选): 过滤技能状态，默认不传为全部状态。
+    * `mine` (bool, 可选): 仅返回当前登录用户创建的技能。
 
     ## 响应 (Returns)
 
@@ -229,6 +230,15 @@ async def list_skills_admin_cursor():
     tenant_id = request.args.get("tenant_id", None)
     status_arg = request.args.get("status", None)
     status = int(status_arg) if status_arg is not None else None
+    mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
+    current = get_current_user() if mine else None
+    creator_id = current.get("id") if current else None
+
+    if mine and not creator_id:
+        return success_response(
+            data={"skills": [], "next_cursor": None, "has_more": False},
+            message="Skills retrieved successfully"
+        )
 
     async with get_session() as session:
         skill_service = SkillService(session)
@@ -238,6 +248,7 @@ async def list_skills_admin_cursor():
             search=query if query else None,
             categories=categories if categories else None,
             tenant_id=tenant_id,
+            creator_id=creator_id,
             status=status
         )
 

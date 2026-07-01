@@ -87,6 +87,7 @@ async def list_assistants_admin_cursor():
     * `category` (str, 可选): 用于过滤助手列表的分类名称，匹配 categories 数组。
     * `tenant_id` (str, 可选): 租户ID，用于过滤特定租户的助手。如果不传则只返回公共(无租户)的助手。
     * `status` (int, 可选): 过滤助手状态，默认不传为全部状态。
+    * `mine` (bool, 可选): 仅返回当前登录用户创建的助手。
     """
     cursor = request.args.get("cursor", None)
     limit = request.args.get("limit", 10, type=int)
@@ -95,6 +96,15 @@ async def list_assistants_admin_cursor():
     tenant_id = request.args.get("tenant_id", None)
     status_arg = request.args.get("status", None)
     status = int(status_arg) if status_arg is not None else None
+    mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
+    current = get_current_user() if mine else None
+    creator_id = current.get("id") if current else None
+
+    if mine and not creator_id:
+        return success_response(
+            data={"assistants": [], "next_cursor": None, "has_more": False},
+            message="Assistants retrieved successfully"
+        )
 
     async with get_session() as session:
         assistant_service = AssistantService(session)
@@ -104,6 +114,7 @@ async def list_assistants_admin_cursor():
             search=query if query else None,
             category=category if category else None,
             tenant_id=tenant_id,
+            creator_id=creator_id,
             status=status
         )
 

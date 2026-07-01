@@ -11,6 +11,8 @@ import {
   Input,
   InputNumber,
   Popconfirm,
+  Descriptions,
+  Typography,
   App as AntdApp,
 } from "antd";
 import {
@@ -18,6 +20,7 @@ import {
   ReloadOutlined,
   EditOutlined,
   DeleteOutlined,
+  EyeOutlined,
 } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -29,15 +32,21 @@ import {
 } from "@/api/categories";
 import { CATEGORY_TYPE } from "@/constants";
 import type { Category } from "@/types";
+import { useAuthStore } from "@/store/auth";
 
 export default function CategoriesPage() {
   const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
+  const isAdmin = useAuthStore((s) => s.isAdmin());
   const [type, setType] = useState<number>(CATEGORY_TYPE.SKILL);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Category | null>(null);
+  const [viewing, setViewing] = useState<Category | null>(null);
   const [form] = Form.useForm();
+
+  const formatTime = (value?: string) =>
+    value ? new Date(value).toLocaleString() : "—";
 
   const { data, isFetching } = useQuery({
     queryKey: ["categories-admin", type],
@@ -117,33 +126,46 @@ export default function CategoriesPage() {
       dataIndex: "updated_at",
       key: "updated_at",
       width: 180,
-      render: (v: string) => (v ? new Date(v).toLocaleString() : "—"),
+      render: (v: string) => formatTime(v),
     },
     {
       title: "操作",
       key: "action",
-      width: 150,
+      width: isAdmin ? 150 : 90,
       render: (_, row) => (
         <Space size={4}>
-          <Button
-            type="link"
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => {
-              setEditing(row);
-              setModalOpen(true);
-            }}
-          >
-            编辑
-          </Button>
-          <Popconfirm
-            title="删除后不可恢复，确认删除？"
-            onConfirm={() => remove.mutate(row.id)}
-          >
-            <Button type="link" size="small" danger icon={<DeleteOutlined />}>
-              删除
+          {isAdmin ? (
+            <>
+              <Button
+                type="link"
+                size="small"
+                icon={<EditOutlined />}
+                onClick={() => {
+                  setEditing(row);
+                  setModalOpen(true);
+                }}
+              >
+                编辑
+              </Button>
+              <Popconfirm
+                title="删除后不可恢复，确认删除？"
+                onConfirm={() => remove.mutate(row.id)}
+              >
+                <Button type="link" size="small" danger icon={<DeleteOutlined />}>
+                  删除
+                </Button>
+              </Popconfirm>
+            </>
+          ) : (
+            <Button
+              type="link"
+              size="small"
+              icon={<EyeOutlined />}
+              onClick={() => setViewing(row)}
+            >
+              查看
             </Button>
-          </Popconfirm>
+          )}
         </Space>
       ),
     },
@@ -171,16 +193,18 @@ export default function CategoriesPage() {
           >
             刷新
           </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              setEditing(null);
-              setModalOpen(true);
-            }}
-          >
-            新增分类
-          </Button>
+          {isAdmin && (
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                setEditing(null);
+                setModalOpen(true);
+              }}
+            >
+              新增分类
+            </Button>
+          )}
         </Space>
 
         <Table
@@ -229,6 +253,50 @@ export default function CategoriesPage() {
             <Input placeholder="https://..." />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title="分类详情"
+        open={Boolean(viewing)}
+        onCancel={() => setViewing(null)}
+        footer={[
+          <Button key="close" type="primary" onClick={() => setViewing(null)}>
+            关闭
+          </Button>,
+        ]}
+        destroyOnClose
+      >
+        {viewing && (
+          <Descriptions column={1} bordered size="small">
+            <Descriptions.Item label="显示名称">
+              {viewing.display_name}
+            </Descriptions.Item>
+            <Descriptions.Item label="标识(name)">
+              <Typography.Text copyable>{viewing.name}</Typography.Text>
+            </Descriptions.Item>
+            <Descriptions.Item label="类型">
+              {viewing.type === CATEGORY_TYPE.SKILL ? "技能分类" : "助手分类"}
+            </Descriptions.Item>
+            <Descriptions.Item label="排序">
+              {viewing.order_index ?? 0}
+            </Descriptions.Item>
+            <Descriptions.Item label="图标链接">
+              {viewing.icon_url ? (
+                <Typography.Link href={viewing.icon_url} target="_blank">
+                  {viewing.icon_url}
+                </Typography.Link>
+              ) : (
+                "—"
+              )}
+            </Descriptions.Item>
+            <Descriptions.Item label="创建时间">
+              {formatTime(viewing.created_at)}
+            </Descriptions.Item>
+            <Descriptions.Item label="更新时间">
+              {formatTime(viewing.updated_at)}
+            </Descriptions.Item>
+          </Descriptions>
+        )}
       </Modal>
     </PageContainer>
   );

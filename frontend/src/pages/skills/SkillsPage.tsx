@@ -9,6 +9,7 @@ import {
   Card,
   Avatar,
   Tag,
+  Switch,
   Popconfirm,
   App as AntdApp,
 } from "antd";
@@ -48,7 +49,8 @@ export default function SkillsPage() {
     query: string;
     status?: number;
     categories?: string;
-  }>({ query: "" });
+    mine?: boolean;
+  }>({ query: "", mine: false });
 
   const list = useCursorList<Skill>("skills", filters, (cursor) =>
     listSkillsAdmin({
@@ -57,6 +59,7 @@ export default function SkillsPage() {
       query: filters.query,
       status: filters.status,
       categories: filters.categories,
+      mine: filters.mine,
     }).then((p) => ({
       items: p.skills,
       next_cursor: p.next_cursor,
@@ -228,6 +231,12 @@ export default function SkillsPage() {
             style={{ width: 160 }}
             options={categoryOptions}
             onChange={(v) => applyFilters({ categories: v })}
+          />
+          <Switch
+            checked={Boolean(filters.mine)}
+            checkedChildren="我的"
+            unCheckedChildren="全部"
+            onChange={(checked) => applyFilters({ mine: checked })}
           />
           <Button
             icon={<ReloadOutlined />}

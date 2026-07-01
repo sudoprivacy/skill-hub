@@ -82,6 +82,7 @@ class AssistantService:
         category: Optional[str] = None,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None,
+        creator_id: Optional[str] = None,
         status: Optional[int] = 1
     ) -> Dict[str, Any]:
         """List assistants with cursor-based pagination
@@ -92,6 +93,7 @@ class AssistantService:
             category: Filter by category name in categories array
             search: Search in name, profession, and description
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
+            creator_id: Filter by creator user ID
             status: Filter by status. None means all statuses. Default is 1 (online).
 
         Returns:
@@ -121,6 +123,13 @@ class AssistantService:
 
         if status is not None:
             query = query.where(Assistant.status == status)
+
+        if creator_id:
+            try:
+                creator_uuid = uuid.UUID(creator_id)
+                query = query.where(Assistant.creator_id == creator_uuid)
+            except ValueError:
+                return {"assistants": [], "next_cursor": None, "has_more": False}
 
         # Parse cursor
         cursor_data = None

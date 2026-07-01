@@ -7,6 +7,7 @@ export interface SkillListParams {
   query?: string;
   categories?: string;
   status?: number;
+  mine?: boolean;
 }
 
 // 技能管理列表（游标分页，含所有状态）
@@ -20,6 +21,7 @@ export function listSkillsAdmin(params: SkillListParams): Promise<SkillCursorPag
       query: params.query || undefined,
       categories: params.categories || undefined,
       status: params.status,
+      mine: params.mine || undefined,
     },
   });
 }

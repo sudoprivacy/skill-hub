@@ -7,6 +7,7 @@ export interface AssistantListParams {
   query?: string;
   category?: string;
   status?: number;
+  mine?: boolean;
 }
 
 // 助手管理列表（游标分页，含所有状态）
@@ -22,6 +23,7 @@ export function listAssistantsAdmin(
       query: params.query || undefined,
       category: params.category || undefined,
       status: params.status,
+      mine: params.mine || undefined,
     },
   });
 }
