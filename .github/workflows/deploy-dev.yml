@@ -87,6 +87,7 @@ jobs:
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             export IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
             export SKILL_HUB_PORT="${{ env.SKILL_HUB_PORT }}"
+            export SKILL_HUB_ADMIN_PASSWORD="${{ secrets.SKILL_HUB_ADMIN_PASSWORD }}"
             export COMPOSE_PROJECT_NAME="${{ env.COMPOSE_PROJECT_NAME }}"
 
             # Pull the image built from this commit with timeout
@@ -96,8 +97,8 @@ jobs:
             docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml down || true
 
             # Pull and start with explicit timeout
-            timeout 8m env GITHUB_REPOSITORY=${GITHUB_REPOSITORY} IMAGE_TAG=${IMAGE_TAG} SKILL_HUB_PORT=${SKILL_HUB_PORT} docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml pull || echo "Compose pull timeout warning"
-            timeout 5m env GITHUB_REPOSITORY=${GITHUB_REPOSITORY} IMAGE_TAG=${IMAGE_TAG} SKILL_HUB_PORT=${SKILL_HUB_PORT} docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml up -d
+            timeout 8m env GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" IMAGE_TAG="${IMAGE_TAG}" SKILL_HUB_PORT="${SKILL_HUB_PORT}" SKILL_HUB_ADMIN_PASSWORD="${SKILL_HUB_ADMIN_PASSWORD}" docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml pull || echo "Compose pull timeout warning"
+            timeout 5m env GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" IMAGE_TAG="${IMAGE_TAG}" SKILL_HUB_PORT="${SKILL_HUB_PORT}" SKILL_HUB_ADMIN_PASSWORD="${SKILL_HUB_ADMIN_PASSWORD}" docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml up -d
 
             # Clean up old dangling images to save disk space
             docker image prune -af
