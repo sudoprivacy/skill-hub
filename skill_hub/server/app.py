@@ -62,10 +62,14 @@ def create_app(config: Config) -> Quart:
     # Register routes
     register_routes(app, config)
 
-    # Ensure auth schema + seed roles/admin once the DB engine is ready.
+    # Bring the database schema up to date, then seed roles/admin, once the DB
+    # engine is ready. Migrations run first so a fresh database has all base
+    # tables before the auth bootstrap touches them.
     @app.before_serving
-    async def _bootstrap_auth():
+    async def _init_schema():
+        from skill_hub.db.migrations import run_migrations
         from skill_hub.db.bootstrap import bootstrap_auth
+        await run_migrations(config)
         await bootstrap_auth(config)
     
     # Add health check endpoint
