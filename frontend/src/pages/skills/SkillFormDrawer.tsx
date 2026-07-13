@@ -16,7 +16,8 @@ import type { UploadFile } from "antd";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createSkill, updateSkill } from "@/api/skills";
 import { useCategories } from "@/hooks/useCategories";
-import { STATUS_OPTIONS, CATEGORY_TYPE } from "@/constants";
+import { useAuthStore } from "@/store/auth";
+import { STATUS, STATUS_OPTIONS, CATEGORY_TYPE } from "@/constants";
 import type { Skill } from "@/types";
 
 interface Props {
@@ -35,6 +36,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
   const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
   const { options: categoryOptions } = useCategories(CATEGORY_TYPE.SKILL);
+  const isAdmin = useAuthStore((s) => s.isAdmin());
 
   const [skillFile, setSkillFile] = useState<UploadFile[]>([]);
   const [iconFile, setIconFile] = useState<UploadFile[]>([]);
@@ -56,7 +58,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ status: 0, sort_order: 0 });
+      form.setFieldsValue({ status: STATUS.PENDING, sort_order: 0 });
     }
   }, [open, mode, skill, form]);
 
@@ -67,7 +69,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         fd.append("name", String(values.name ?? ""));
         fd.append("display_name", String(values.display_name ?? ""));
         fd.append("version", String(values.version ?? ""));
-        appendOptional(fd, values);
+        appendOptional(fd, values, { includeStatus: isAdmin });
         (values.categories as string[] | undefined)?.forEach((c) =>
           fd.append("categories", c)
         );
@@ -84,7 +86,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       if (hasIcon) {
         const fd = new FormData();
         fd.append("display_name", String(values.display_name ?? ""));
-        appendOptional(fd, values);
+        appendOptional(fd, values, { includeStatus: isAdmin });
         fd.append(
           "categories",
           JSON.stringify((values.categories as string[]) ?? [])
@@ -94,13 +96,15 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       }
       const payload: Record<string, unknown> = {
         display_name: values.display_name,
-        status: values.status,
         categories: values.categories ?? [],
         sort_order: values.sort_order,
         description: values.description,
         core_features: values.core_features,
         applicable_scenarios: values.applicable_scenarios,
       };
+      if (isAdmin) {
+        payload.status = values.status;
+      }
       return updateSkill(skill!.id, payload);
     },
     onSuccess: () => {
@@ -179,7 +183,7 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         )}
 
         <Form.Item name="status" label="状态">
-          <Select options={STATUS_OPTIONS} />
+          <Select disabled={!isAdmin} options={STATUS_OPTIONS} />
         </Form.Item>
         <Form.Item label="图标文件（.png/.svg，可选）">
           <Upload
@@ -221,14 +225,20 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
 }
 
 // 把可选标量字段追加到 FormData（跳过空值）
-function appendOptional(fd: FormData, values: Record<string, unknown>) {
+function appendOptional(
+  fd: FormData,
+  values: Record<string, unknown>,
+  options: { includeStatus: boolean }
+) {
   const keys = [
-    "status",
     "sort_order",
     "description",
     "core_features",
     "applicable_scenarios",
   ];
+  if (options.includeStatus) {
+    keys.unshift("status");
+  }
   for (const k of keys) {
     const v = values[k];
     if (v !== undefined && v !== null && v !== "") {
