@@ -25,7 +25,7 @@ from skill_hub.utils.content_storage import (
     cos_bucket_name,
 )
 from skill_hub.api.responses import success_response
-from skill_hub.api.exceptions import BadRequestException, NotFoundException
+from skill_hub.api.exceptions import BadRequestException, ForbiddenException, NotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -437,6 +437,9 @@ async def add_skill(skill: SkillCreateRequest):
     
     * `BadRequestException`: 参数校验失败或文件上传错误。
     """
+    if not is_admin():
+        skill.status = 0
+
     files = await request.files
     skill_file = files.get("skill_file")
     icon_file = files.get("icon_file")
@@ -591,6 +594,9 @@ async def update_skill(skill_id: str):
 
     for field in _VERSION_UPDATE_FIELDS:
         data.pop(field, None)
+
+    if data.get("status") not in (None, "") and not is_admin():
+        raise ForbiddenException(message="普通用户不能修改技能状态")
 
     if icon_file:
         icon_extension = _validate_icon_file(icon_file)
