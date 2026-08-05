@@ -74,7 +74,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
-          command_timeout: 60m
+          command_timeout: 90m
           script: |
             set -e
 
@@ -97,7 +97,7 @@ jobs:
             export COMPOSE_PROJECT_NAME="${{ env.COMPOSE_PROJECT_NAME }}"
 
             # Pull the new image before stopping the running container
-            timeout 40m docker compose \
+            timeout 60m docker compose \
               -p "${COMPOSE_PROJECT_NAME}" \
               -f docker-compose.dev.yml \
               pull
