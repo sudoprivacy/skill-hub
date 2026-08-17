@@ -6,6 +6,8 @@ from skill_hub.models.skill_version import SkillVersion
 from skill_hub.models.category import Category
 from skill_hub.models.assistant import Assistant
 from skill_hub.models.assistant_version import AssistantVersion
+from skill_hub.models.role import Role
+from skill_hub.models.user import User
 
 # Configure relationships after both classes are defined
 from sqlalchemy.orm import configure_mappers
@@ -16,4 +18,13 @@ def configure_all_mappers():
     """Configure all mappers for the models"""
     configure_mappers()
 
-__all__ = ["Skill", "SkillVersion", "Category", "Assistant", "AssistantVersion", "configure_all_mappers"]
+__all__ = [
+    "Skill",
+    "SkillVersion",
+    "Category",
+    "Assistant",
+    "AssistantVersion",
+    "Role",
+    "User",
+    "configure_all_mappers",
+]

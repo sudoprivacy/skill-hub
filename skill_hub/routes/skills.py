@@ -6,7 +6,13 @@ import logging
 from functools import wraps
 from quart import Blueprint, request, current_app
 
-from skill_hub.api.auth import token_required
+from skill_hub.api.auth import (
+    token_required,
+    get_current_user,
+    is_admin,
+    require_admin,
+    require_owner_or_admin,
+)
 from skill_hub.schemas.skill_schemas import SkillCreateRequest, SkillUpdateRequest
 from skill_hub.services.skill_service import SkillService
 from skill_hub.services.skill_version_service import SkillVersionService
@@ -19,7 +25,7 @@ from skill_hub.utils.content_storage import (
     cos_bucket_name,
 )
 from skill_hub.api.responses import success_response
-from skill_hub.api.exceptions import BadRequestException, NotFoundException
+from skill_hub.api.exceptions import BadRequestException, ForbiddenException, NotFoundException
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +207,7 @@ async def list_skills_admin_cursor():
     * `tenant_id` (str, 可选): 返回 `tenant_ids` 中包含该 ID 的技能，同时兼容旧
       `tenant_id` 数据。不传时只返回公共技能。
     * `status` (int, 可选): 过滤技能状态，默认不传为全部状态。
+    * `mine` (bool, 可选): 仅返回当前登录用户创建的技能。
 
     ## 响应 (Returns)
 
@@ -230,6 +237,16 @@ async def list_skills_admin_cursor():
     tenant_id = request.args.get("tenant_id", None)
     status_arg = request.args.get("status", None)
     status = int(status_arg) if status_arg is not None else None
+    mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
+    current = get_current_user() if mine else None
+    creator_id = current.get("id") if current else None
+    include_creatorless = mine and is_admin()
+
+    if mine and not creator_id:
+        return success_response(
+            data={"skills": [], "next_cursor": None, "has_more": False},
+            message="Skills retrieved successfully"
+        )
 
     async with get_session() as session:
         skill_service = SkillService(session)
@@ -239,6 +256,8 @@ async def list_skills_admin_cursor():
             search=query if query else None,
             categories=categories if categories else None,
             tenant_id=tenant_id,
+            creator_id=creator_id,
+            include_creatorless=include_creatorless,
             status=status
         )
 
@@ -430,6 +449,9 @@ async def add_skill(skill: SkillCreateRequest):
     
     * `BadRequestException`: 参数校验失败或文件上传错误。
     """
+    if not is_admin():
+        skill.status = 0
+
     files = await request.files
     skill_file = files.get("skill_file")
     icon_file = files.get("icon_file")
@@ -525,6 +547,11 @@ async def add_skill(skill: SkillCreateRequest):
         if icon_object_key:
             skill_data["icon"] = icon_object_key
 
+        # Attribute ownership to the current user (None for system token).
+        current = get_current_user()
+        if current and current.get("id"):
+            skill_data["creator_id"] = current["id"]
+
         # Create or update skill
         existing_skill = await skill_service.get_by_name(
             skill.name, skill.tenant_id, skill.tenant_ids
@@ -608,6 +635,9 @@ async def update_skill(skill_id: str):
     for field in _VERSION_UPDATE_FIELDS:
         data.pop(field, None)
 
+    if data.get("status") not in (None, "") and not is_admin():
+        raise ForbiddenException(message="普通用户不能修改技能状态")
+
     if icon_file:
         icon_extension = _validate_icon_file(icon_file)
 
@@ -659,6 +689,11 @@ async def update_skill(skill_id: str):
 
     async with get_session() as session:
         skill_service = SkillService(session)
+        target = await skill_service.get_by_id(skill_id)
+        if not target:
+            raise NotFoundException(message="Skill not found")
+        require_owner_or_admin(target.creator_id)
+
         skill = await skill_service.update(skill_id, req.to_update_data())
         if not skill:
             raise NotFoundException(message="Skill not found")
@@ -682,6 +717,7 @@ async def approve_skill(skill_id: str):
 
     * `skill_id` (str): 要审批的技能的唯一标识符 (UUID)。
     """
+    require_admin()
     async with get_session() as session:
         skill_service = SkillService(session)
 
@@ -711,6 +747,11 @@ async def delete_skill(skill_id: str):
     """
     async with get_session() as session:
         skill_service = SkillService(session)
+        target = await skill_service.get_by_id(skill_id)
+        if not target:
+            raise NotFoundException(message="Skill not found")
+        require_owner_or_admin(target.creator_id)
+
         deleted = await skill_service.delete(skill_id)
         if not deleted:
             raise NotFoundException(message="Skill not found")

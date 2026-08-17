@@ -64,6 +64,9 @@ logs/
 # Docker
 docker-compose.override.yml
 
+# Frontend build output (admin SPA is built inside the Docker image now)
+skill_hub/static/admin/
+
 # Test coverage
 .coverage
 htmlcov/

@@ -5,7 +5,7 @@ import uuid
 import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
-from sqlalchemy import select, update, delete, desc, func
+from sqlalchemy import select, update, delete, desc, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -138,6 +138,8 @@ class SkillService:
         limit: int = 10,
         categories: Optional[str] = None,
         author_id: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        include_creatorless: bool = False,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None,
         status: Optional[int] = 1
@@ -149,6 +151,8 @@ class SkillService:
             limit: Items per page
             categories: Filter by categories
             author_id: Filter by author ID
+            creator_id: Filter by creator user ID
+            include_creatorless: Include records with no creator when filtering by creator
             search: Search in name, display_name, and description
             tenant_id: Filter by tenant ID
             status: Filter by status. None means all statuses. Default is 1 (online).
@@ -174,6 +178,21 @@ class SkillService:
             try:
                 author_uuid = uuid.UUID(author_id)
                 stmt = stmt.where(Skill.author_id == author_uuid)
+            except ValueError:
+                return {"skills": [], "next_cursor": None, "has_more": False}
+
+        if creator_id:
+            try:
+                creator_uuid = uuid.UUID(creator_id)
+                if include_creatorless:
+                    stmt = stmt.where(
+                        or_(
+                            Skill.creator_id == creator_uuid,
+                            Skill.creator_id.is_(None),
+                        )
+                    )
+                else:
+                    stmt = stmt.where(Skill.creator_id == creator_uuid)
             except ValueError:
                 return {"skills": [], "next_cursor": None, "has_more": False}
                 
@@ -237,14 +256,15 @@ class SkillService:
                 cloned_skill.versions = skill.versions
             cloned_skills.append(cloned_skill)
             
-        # Replace empty icon with default. The base URL is sourced from the
-        # SKILL_HUB_COS_BASE_URL env var (see .env.example / Config) rather
-        # than being hardcoded here.
-        base_url = _get_cos_base_url()
+        # Replace empty icon with default and resolve via the unified
+        # content_storage helper so the URL respects local-content mode
+        # (SKILL_HUB_CONTENT_BASE_URL) when set, falling back to the COS
+        # base URL (SKILL_HUB_COS_BASE_URL) otherwise.
+        from skill_hub.utils.content_storage import resolve_source_url
         default_icon = _DEFAULT_ICON_PATH
         for skill in cloned_skills:
             icon_path = skill.icon if skill.icon else default_icon
-            skill.icon = f"{base_url}/{icon_path}" if base_url else icon_path
+            skill.icon = resolve_source_url(icon_path)
                 
         has_more = len(cloned_skills) > limit
         if has_more:

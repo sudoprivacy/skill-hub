@@ -48,6 +48,10 @@ class Config:
     # unaffected. Example: http://172.16.3.16:8080
     content_base_url: str = field(default="")
 
+    # Bootstrap admin account (created on startup if missing)
+    admin_username: str = field(default="admin")
+    admin_password: str = field(default="")
+
     def __post_init__(self):
         """Validate configuration after initialization"""
         # Load environment variables from .env file
@@ -129,6 +133,14 @@ class Config:
 
         if not self.content_base_url and env_content_base_url:
             self.content_base_url = env_content_base_url
+
+        # Bootstrap admin credentials from environment.
+        env_admin_username = os.getenv("SKILL_HUB_ADMIN_USERNAME")
+        env_admin_password = os.getenv("SKILL_HUB_ADMIN_PASSWORD")
+        if self.admin_username == "admin" and env_admin_username:
+            self.admin_username = env_admin_username
+        if not self.admin_password and env_admin_password:
+            self.admin_password = env_admin_password
 
         # Normalize cos_base_url by stripping any trailing slash to avoid
         # double-slashes when concatenating with object keys.

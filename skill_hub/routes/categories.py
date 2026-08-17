@@ -3,7 +3,7 @@
 import logging
 from quart import Blueprint, request
 
-from skill_hub.api.auth import token_required
+from skill_hub.api.auth import token_required, require_admin
 from skill_hub.schemas.category_schemas import CategoryCreateRequest, CategoryUpdateRequest
 from skill_hub.services.category_service import CategoryService
 from skill_hub.db.database import get_session
@@ -37,6 +37,31 @@ async def list_categories():
         message="Categories retrieved successfully"
     )
 
+@categories_router.route("/admin", methods=["GET"])
+@token_required
+async def list_categories_admin():
+    """List categories with full detail (for admin console).
+
+    Args:
+        type (int, optional): 0 for skill categories, 1 for assistant
+            categories. Defaults to 0.
+
+    Returns:
+        List of full category objects (id, name, display_name, order_index,
+        icon_url, type, timestamps).
+    """
+    type_filter = request.args.get("type", default=0, type=int)
+
+    async with get_session() as session:
+        category_service = CategoryService(session)
+        categories = await category_service.list_all(type_filter=type_filter)
+        categories_data = [c.to_dict() for c in categories]
+
+    return success_response(
+        data=categories_data,
+        message="Categories retrieved successfully"
+    )
+
 @categories_router.route("/<category_id>", methods=["GET"])
 @token_required
 async def get_category(category_id: str):
@@ -46,16 +71,68 @@ async def get_category(category_id: str):
         category = await category_service.get_by_id(category_id)
         if not category:
             raise NotFoundException(message="Category not found")
-            
+
     return success_response(
         data=category.to_dict(),
         message="Category retrieved successfully"
     )
 
+@categories_router.route("/<category_id>", methods=["PUT"])
+@token_required
+async def update_category(category_id: str):
+    """Update an existing category."""
+    require_admin()
+    data = await request.get_json()
+    if not data:
+        raise BadRequestException(message="Invalid JSON payload")
+
+    req = CategoryUpdateRequest.from_dict(data)
+    is_valid, error = req.validate()
+    if not is_valid:
+        raise BadRequestException(message=error)
+
+    async with get_session() as session:
+        category_service = CategoryService(session)
+
+        existing = await category_service.get_by_id(category_id)
+        if not existing:
+            raise NotFoundException(message="Category not found")
+
+        # Guard the (name, type) unique constraint: if name/type changes to a
+        # combination owned by a different category, reject with a clear error.
+        new_name = req.name if req.name is not None else existing.name
+        new_type = req.type if req.type is not None else existing.type
+        conflict = await category_service.get_by_name_and_type(new_name, new_type)
+        if conflict and str(conflict.id) != str(existing.id):
+            raise BadRequestException(
+                message="Category name already exists for this type"
+            )
+
+        category = await category_service.update(category_id, req.to_update_data())
+
+    return success_response(
+        data=category.to_dict(),
+        message="Category updated successfully"
+    )
+
+@categories_router.route("/<category_id>", methods=["DELETE"])
+@token_required
+async def delete_category(category_id: str):
+    """Delete a category by ID."""
+    require_admin()
+    async with get_session() as session:
+        category_service = CategoryService(session)
+        deleted = await category_service.delete(category_id)
+        if not deleted:
+            raise NotFoundException(message="Category not found")
+
+    return success_response(message="Category deleted successfully")
+
 @categories_router.route("", methods=["POST"])
 @token_required
 async def create_category():
     """Create a new category"""
+    require_admin()
     data = await request.get_json()
     if not data:
         raise BadRequestException(message="Invalid JSON payload")

@@ -5,7 +5,14 @@ import uuid
 import logging
 from quart import Blueprint, request, current_app
 
-from skill_hub.api.auth import token_required
+from skill_hub.api.auth import (
+    token_required,
+    get_current_user,
+    is_admin,
+    require_admin,
+    require_owner_or_admin,
+)
+import uuid as _uuid
 from skill_hub.schemas.assistant_schemas import AssistantCreateRequest, AssistantUpdateRequest
 from skill_hub.services.assistant_service import AssistantService
 from skill_hub.services.assistant_version_service import AssistantVersionService
@@ -94,6 +101,7 @@ async def list_assistants_admin_cursor():
     * `tenant_id` (str, 可选): 返回 `tenantIds` 中包含该 ID 的助手，同时兼容旧
       `tenantId` 数据。不传时只返回公共助手。
     * `status` (int, 可选): 过滤助手状态，默认不传为全部状态。
+    * `mine` (bool, 可选): 仅返回当前登录用户创建的助手。
     """
     cursor = request.args.get("cursor", None)
     limit = request.args.get("limit", 10, type=int)
@@ -102,6 +110,16 @@ async def list_assistants_admin_cursor():
     tenant_id = request.args.get("tenant_id", None)
     status_arg = request.args.get("status", None)
     status = int(status_arg) if status_arg is not None else None
+    mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
+    current = get_current_user() if mine else None
+    creator_id = current.get("id") if current else None
+    include_creatorless = mine and is_admin()
+
+    if mine and not creator_id:
+        return success_response(
+            data={"assistants": [], "next_cursor": None, "has_more": False},
+            message="Assistants retrieved successfully"
+        )
 
     async with get_session() as session:
         assistant_service = AssistantService(session)
@@ -111,6 +129,8 @@ async def list_assistants_admin_cursor():
             search=query if query else None,
             category=category if category else None,
             tenant_id=tenant_id,
+            creator_id=creator_id,
+            include_creatorless=include_creatorless,
             status=status
         )
 
@@ -367,6 +387,10 @@ async def create_assistant():
             assistant_data = req.to_assistant_data()
             assistant_data.pop("source_url", None)
             assistant_data["id"] = assistant_id
+            # Attribute ownership to the current user (None for system token).
+            current = get_current_user()
+            if current and current.get("id"):
+                assistant_data["creator_id"] = _uuid.UUID(current["id"])
             assistant = await assistant_service.create(assistant_data)
         else:
             assistant = existing
@@ -445,14 +469,19 @@ async def update_assistant(assistant_id: str):
         
     async with get_session() as session:
         assistant_service = AssistantService(session)
-        
+
+        target = await assistant_service.get_by_id(assistant_id)
+        if not target:
+            raise NotFoundException(message="Assistant not found")
+        require_owner_or_admin(target.creator_id)
+
         # Ensure we aren't updating to an existing name
         if req.name is not None:
             existing = await assistant_service.get_by_name(req.name)
             # If name exists and it's a DIFFERENT assistant
             if existing and str(existing.id) != assistant_id:
                 raise BadRequestException(message="Assistant name already exists")
-                
+
         assistant = await assistant_service.update(assistant_id, req.to_update_data())
         if not assistant:
             raise NotFoundException(message="Assistant not found")
@@ -470,6 +499,11 @@ async def delete_assistant(assistant_id: str):
     """Delete an assistant"""
     async with get_session() as session:
         assistant_service = AssistantService(session)
+        target = await assistant_service.get_by_id(assistant_id)
+        if not target:
+            raise NotFoundException(message="Assistant not found")
+        require_owner_or_admin(target.creator_id)
+
         deleted = await assistant_service.delete(assistant_id)
         if not deleted:
             raise NotFoundException(message="Assistant not found")
@@ -490,6 +524,7 @@ async def approve_assistant(assistant_id: str):
 
     * `assistant_id` (str): 要审批的数字助手的唯一标识符 (UUID)。
     """
+    require_admin()
     async with get_session() as session:
         assistant_service = AssistantService(session)
 

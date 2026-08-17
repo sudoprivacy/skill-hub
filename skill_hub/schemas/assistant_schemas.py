@@ -243,7 +243,7 @@ class AssistantUpdateRequest:
 
         if self.default_init_prompt is not None:
             data["default_init_prompt"] = self.default_init_prompt
-            
+
         if self.tenant_id is not None:
             data["tenant_id"] = self.tenant_id
 

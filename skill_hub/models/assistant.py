@@ -120,6 +120,14 @@ class Assistant(Base):
         comment="Array of associated skill IDs"
     )
 
+    creator_id = Column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id"),
+        nullable=True,
+        index=True,
+        comment="User who created this assistant (null for system/imported)"
+    )
+
     created_at = Column(
         DateTime(timezone=True),
         default=datetime.utcnow,
@@ -140,7 +148,9 @@ class Assistant(Base):
         return f"<Assistant(id={self.id}, name='{self.name}', profession='{self.profession}')>"
 
     versions = relationship("AssistantVersion", back_populates="assistant", cascade="all, delete-orphan", lazy="selectin")
-    
+    # Eager-load the creator so to_dict can expose the username cheaply.
+    creator = relationship("User", lazy="selectin", foreign_keys=[creator_id])
+
     def to_dict(self) -> dict:
         """Convert to dictionary representation, exposing camelCase keys for API."""
         # In local content mode, resolve stored object keys to absolute URLs
@@ -183,6 +193,8 @@ class Assistant(Base):
             "sortOrder": self.sort_order,
             "categories": self.categories,
             "status": self.status,
+            "creator_id": str(self.creator_id) if self.creator_id else None,
+            "creator_name": self.creator.username if self.creator else None,
             "skills": [str(s) for s in self.skills] if self.skills else [],
             "createdAt": self.created_at.isoformat() if self.created_at else None,
             "updatedAt": self.updated_at.isoformat() if self.updated_at else None,

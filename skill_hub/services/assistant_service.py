@@ -2,7 +2,7 @@
 
 import uuid
 from typing import Dict, Any, List, Optional
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.attributes import set_committed_value
 from sqlalchemy.orm import selectinload
@@ -91,6 +91,8 @@ class AssistantService:
         category: Optional[str] = None,
         search: Optional[str] = None,
         tenant_id: Optional[str] = None,
+        creator_id: Optional[str] = None,
+        include_creatorless: bool = False,
         status: Optional[int] = 1
     ) -> Dict[str, Any]:
         """List assistants with cursor-based pagination
@@ -101,6 +103,8 @@ class AssistantService:
             category: Filter by category name in categories array
             search: Search in name, profession, and description
             tenant_id: Optional tenant ID to filter by. If None, filters for assistants with no tenant_id
+            creator_id: Filter by creator user ID
+            include_creatorless: Include records with no creator when filtering by creator
             status: Filter by status. None means all statuses. Default is 1 (online).
 
         Returns:
@@ -127,6 +131,21 @@ class AssistantService:
 
         if status is not None:
             query = query.where(Assistant.status == status)
+
+        if creator_id:
+            try:
+                creator_uuid = uuid.UUID(creator_id)
+                if include_creatorless:
+                    query = query.where(
+                        or_(
+                            Assistant.creator_id == creator_uuid,
+                            Assistant.creator_id.is_(None),
+                        )
+                    )
+                else:
+                    query = query.where(Assistant.creator_id == creator_uuid)
+            except ValueError:
+                return {"assistants": [], "next_cursor": None, "has_more": False}
 
         # Parse cursor
         cursor_data = None

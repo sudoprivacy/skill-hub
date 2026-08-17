@@ -74,18 +74,21 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
-          command_timeout: 10m
+          command_timeout: 90m
           script: |
-            set -e  # Exit immediately if a command exits with a non-zero status.
+            set -e
 
             # Log into GitHub Container Registry using a PAT stored as a secret on the repository
             # NOTE: GITHUB_TOKEN is not valid for authenticating from the remote machine. Create a PAT
             # with `read:packages` scope and add it as the repository secret `GHCR_PAT`. Also add
             # `GHCR_USERNAME` (the GitHub account that owns the PAT).
-            echo "${{ secrets.GHCR_PAT }}" | docker login ${{ env.REGISTRY }} -u ${{ secrets.GHCR_USERNAME }} --password-stdin
+            echo "${{ secrets.GHCR_PAT }}" | \
+              docker login "${{ env.REGISTRY }}" \
+                -u "${{ secrets.GHCR_USERNAME }}" \
+                --password-stdin
 
             # Navigate to deployment directory
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "${{ secrets.DEPLOY_PATH }}"
 
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             export IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
@@ -93,15 +96,23 @@ jobs:
             export SKILL_HUB_ADMIN_PASSWORD="${{ secrets.SKILL_HUB_ADMIN_PASSWORD }}"
             export COMPOSE_PROJECT_NAME="${{ env.COMPOSE_PROJECT_NAME }}"
 
-            # Pull the image built from this commit with timeout
-            timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG} || echo "Pull timeout warning - continuing deployment"
+            # Pull the new image before stopping the running container
+            timeout 60m docker compose \
+              -p "${COMPOSE_PROJECT_NAME}" \
+              -f docker-compose.dev.yml \
+              pull
 
-            # Recreate development containers with the new image
-            docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml down || true
+            # Stop the existing development containers after the image is ready
+            docker compose \
+              -p "${COMPOSE_PROJECT_NAME}" \
+              -f docker-compose.dev.yml \
+              down
 
-            # Pull and start with explicit timeout
-            timeout 8m env GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" IMAGE_TAG="${IMAGE_TAG}" SKILL_HUB_PORT="${SKILL_HUB_PORT}" SKILL_HUB_ADMIN_PASSWORD="${SKILL_HUB_ADMIN_PASSWORD}" docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml up -d
-            timeout 5m env GITHUB_REPOSITORY="${GITHUB_REPOSITORY}" IMAGE_TAG="${IMAGE_TAG}" SKILL_HUB_PORT="${SKILL_HUB_PORT}" SKILL_HUB_ADMIN_PASSWORD="${SKILL_HUB_ADMIN_PASSWORD}" docker compose -p "${COMPOSE_PROJECT_NAME}" -f docker-compose.dev.yml pull || true
+            # Start development containers with the successfully downloaded image
+            docker compose \
+              -p "${COMPOSE_PROJECT_NAME}" \
+              -f docker-compose.dev.yml \
+              up -d
 
             # Clean up old dangling images to save disk space
             docker image prune -af

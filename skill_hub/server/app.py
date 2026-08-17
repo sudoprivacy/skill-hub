@@ -7,6 +7,7 @@ from quart_schema import QuartSchema, Info
 from skill_hub.api.exceptions import register_error_handlers
 from skill_hub.api.auth import AuthMiddleware
 from skill_hub.routes.routes import register_routes
+from skill_hub.utils.content_storage import ensure_default_icon
 
 
 def create_app(config: Config) -> Quart:
@@ -62,8 +63,22 @@ def create_app(config: Config) -> Quart:
         protected_prefixes=[config.api_prefix]
     )
     
+    # Seed the default skill icon to local content storage (local mode only;
+    # no-op in COS mode). Idempotent — won't overwrite a custom icon.
+    ensure_default_icon()
+
     # Register routes
     register_routes(app, config)
+
+    # Bring the database schema up to date, then seed roles/admin, once the DB
+    # engine is ready. Migrations run first so a fresh database has all base
+    # tables before the auth bootstrap touches them.
+    @app.before_serving
+    async def _init_schema():
+        from skill_hub.db.migrations import run_migrations
+        from skill_hub.db.bootstrap import bootstrap_auth
+        await run_migrations(config)
+        await bootstrap_auth(config)
     
     # Add health check endpoint
     @app.route("/health")
