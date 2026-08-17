@@ -116,6 +116,32 @@ python main.py
 
 #### API Documentation
 - `GET /api/docs` - API documentation
+- `GET /api/redoc` - ReDoc API documentation
+- `GET /api/openapi.json` - OpenAPI specification
+
+### Multi-Tenant Fields
+
+Skills and assistants can belong to multiple tenants:
+
+- Skill requests use `tenant_ids`; responses contain `tenant_ids` and the legacy
+  `tenant_id` field.
+- Assistant requests use `tenantIds` (or `tenant_ids`); responses contain
+  `tenantIds` and the legacy `tenantId` field.
+- The plural field is authoritative when both plural and singular fields are
+  supplied. The singular compatibility field is synchronized to the first array
+  item.
+- Sending an empty tenant array makes the resource public.
+- List endpoints continue to accept one `tenant_id` query parameter. A resource
+  matches when that ID occurs anywhere in its tenant array. Omitting the query
+  parameter returns public resources only.
+
+Example assistant update:
+
+```json
+{
+  "tenantIds": ["tenant-a", "tenant-b"]
+}
+```
 
 ### Authentication
 
@@ -292,6 +318,8 @@ The `skills` table has the following structure:
 | name | VARCHAR(255) | Folder name/unique identifier (e.g., weather) |
 | display_name | VARCHAR(255) | Display name (e.g., Weather Forecast Expert) |
 | author_id | UUID | Developer ID |
+| tenant_id | VARCHAR(255) | First tenant ID, retained for compatibility |
+| tenant_ids | VARCHAR(255)[] | Tenant ownership list |
 | description | TEXT | Description from SKILL.md, used for keyword search |
 | category | VARCHAR(100) | Category (e.g., AI/Vision, Tools, Social) |
 | emoji | VARCHAR(10) | Corresponding icon (from metadata) |

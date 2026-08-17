@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from typing import Optional, Tuple, Dict, Any
+from typing import Optional, Tuple, Dict, Any, List
 import json
+
+from skill_hub.utils.tenant_utils import parse_tenant_ids, synchronize_tenant_data
 
 @dataclass
 class SkillCreateRequest:
@@ -19,6 +21,7 @@ class SkillCreateRequest:
     sort_order: Optional[int] = 0
     status: Optional[int] = 0
     tenant_id: Optional[str] = None
+    tenant_ids: Optional[List[str]] = None
 
     @classmethod
     def from_form_data(cls, form_data: Dict[str, Any]) -> "SkillCreateRequest":
@@ -35,7 +38,10 @@ class SkillCreateRequest:
             homepage=form_data.get("homepage"),
             changelog=form_data.get("changelog"),
             author_id=form_data.get("author_id"),
-            tenant_id=form_data.get("tenant_id"),
+            tenant_id=form_data.get("tenant_id") or form_data.get("tenantId"),
+            tenant_ids=parse_tenant_ids(
+                form_data.get("tenant_ids") or form_data.get("tenantIds")
+            ),
             sort_order=int(form_data.get("sort_order", 0)) if form_data.get("sort_order") else 0,
             status=int(form_data.get("status", 0)) if form_data.get("status") else 0,
         )
@@ -50,7 +56,7 @@ class SkillCreateRequest:
         return True, None
 
     def to_skill_data(self, author_id: str) -> Dict[str, Any]:
-        return {
+        data = {
             "name": self.name,
             "display_name": self.display_name,
             "category": self.category,
@@ -65,6 +71,9 @@ class SkillCreateRequest:
             "sort_order": self.sort_order,
             "status": self.status,
         }
+        if self.tenant_ids is not None:
+            data["tenant_ids"] = self.tenant_ids
+        return synchronize_tenant_data(data)
 
     def to_version_data(self, skill_id: str, source_url: str, checksum: str, readme_content: Optional[str] = None) -> Dict[str, Any]:
         return {
@@ -96,6 +105,7 @@ class SkillUpdateRequest:
     sort_order: Optional[int] = None
     status: Optional[int] = None
     tenant_id: Optional[str] = None
+    tenant_ids: Optional[List[str]] = None
     star_count: Optional[int] = None
     download_count: Optional[int] = None
 
@@ -121,6 +131,10 @@ class SkillUpdateRequest:
                 except json.JSONDecodeError:
                     categories_parsed = [s.strip() for s in categories_raw.split(",") if s.strip()]
 
+        tenant_ids_raw = data.get("tenant_ids")
+        if tenant_ids_raw is None:
+            tenant_ids_raw = data.get("tenantIds")
+
         return cls(
             name=_get_val("name"),
             display_name=_get_val("display_name", "displayName"),
@@ -134,6 +148,7 @@ class SkillUpdateRequest:
             homepage=_get_val("homepage"),
             author_id=_get_val("author_id", "authorId"),
             tenant_id=_get_val("tenant_id", "tenantId"),
+            tenant_ids=parse_tenant_ids(tenant_ids_raw),
             sort_order=_parse_int(_get_val("sort_order", "sortOrder")),
             status=_parse_int(_get_val("status")),
             star_count=_parse_int(_get_val("star_count", "starCount")),
@@ -145,7 +160,8 @@ class SkillUpdateRequest:
             self.name, self.display_name, self.category, self.description,
             self.core_features, self.applicable_scenarios, self.categories,
             self.emoji, self.icon, self.homepage, self.author_id, self.sort_order,
-            self.status, self.tenant_id, self.star_count, self.download_count
+            self.status, self.tenant_id, self.tenant_ids, self.star_count,
+            self.download_count
         ]
 
         if all(field is None for field in fields):
@@ -200,6 +216,9 @@ class SkillUpdateRequest:
         if self.tenant_id is not None:
             data["tenant_id"] = self.tenant_id
 
+        if self.tenant_ids is not None:
+            data["tenant_ids"] = self.tenant_ids
+
         if self.sort_order is not None:
             data["sort_order"] = self.sort_order
 
@@ -212,4 +231,4 @@ class SkillUpdateRequest:
         if self.download_count is not None:
             data["download_count"] = self.download_count
 
-        return data
+        return synchronize_tenant_data(data)

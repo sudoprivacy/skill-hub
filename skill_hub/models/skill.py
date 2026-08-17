@@ -2,7 +2,6 @@
 
 import uuid
 from datetime import datetime, timezone
-from typing import Optional
 from sqlalchemy import Column, String, Text, Integer, DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.orm import declarative_base, relationship
@@ -67,6 +66,12 @@ class Skill(Base):
         nullable=True,
         index=True,
         comment="Tenant ID"
+    )
+
+    tenant_ids = Column(
+        ARRAY(String(255)),
+        nullable=True,
+        comment="Tenant IDs"
     )
 
     # Skill details
@@ -179,12 +184,16 @@ class Skill(Base):
             Dictionary containing skill data
         """
         # Base dictionary
+        from skill_hub.utils.tenant_utils import effective_tenant_ids
+
+        tenant_ids = effective_tenant_ids(self)
         result = {
             "id": str(self.id),
             "name": self.name,
             "display_name": self.display_name,
             "author_id": str(self.author_id),
-            "tenant_id": self.tenant_id,
+            "tenant_id": tenant_ids[0] if tenant_ids else None,
+            "tenant_ids": tenant_ids,
             "description": self.description,
             "category": self.category,
             "categories": self.categories,
@@ -244,8 +253,14 @@ class Skill(Base):
         if "author_id" in data and data["author_id"]:
             skill.author_id = uuid.UUID(data["author_id"]) if isinstance(data["author_id"], str) else data["author_id"]
 
-        if "tenant_id" in data:
-            skill.tenant_id = data["tenant_id"]
+        from skill_hub.utils.tenant_utils import synchronize_tenant_data
+
+        tenant_data = {
+            key: data[key] for key in ("tenant_id", "tenant_ids") if key in data
+        }
+        synchronize_tenant_data(tenant_data)
+        for key, value in tenant_data.items():
+            setattr(skill, key, value)
 
         if "description" in data:
             skill.description = data["description"]

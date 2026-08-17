@@ -11,6 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from skill_hub.models.skill import Skill
 from skill_hub.api.exceptions import NotFoundException, ConflictException
+from skill_hub.utils.tenant_utils import (
+    synchronize_tenant_data,
+    tenant_filter,
+    tenants_filter,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +65,12 @@ class SkillService:
             ConflictException: If skill with same name already exists
         """
         # Check if skill with same name already exists
-        existing = await self.get_by_name(skill_data.get("name"), skill_data.get("tenant_id"))
+        synchronize_tenant_data(skill_data)
+        existing = await self.get_by_name(
+            skill_data.get("name"),
+            skill_data.get("tenant_id"),
+            skill_data.get("tenant_ids"),
+        )
         if existing:
             raise ConflictException(
                 message=f"Skill with name '{skill_data['name']}' already exists"
@@ -100,7 +110,12 @@ class SkillService:
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
     
-    async def get_by_name(self, name: str, tenant_id: Optional[str] = None) -> Optional[Skill]:
+    async def get_by_name(
+        self,
+        name: str,
+        tenant_id: Optional[str] = None,
+        tenant_ids: Optional[List[str]] = None,
+    ) -> Optional[Skill]:
         """Get skill by name
 
         Args:
@@ -112,10 +127,7 @@ class SkillService:
         """
         stmt = select(Skill).where(Skill.name == name)
 
-        if tenant_id is not None:
-            stmt = stmt.where(Skill.tenant_id == tenant_id)
-        else:
-            stmt = stmt.where(Skill.tenant_id.is_(None))
+        stmt = stmt.where(tenants_filter(Skill, tenant_ids, tenant_id))
 
         result = await self.session.execute(stmt)
         return result.scalar_one_or_none()
@@ -152,10 +164,7 @@ class SkillService:
         if status is not None:
             stmt = stmt.where(Skill.status == status)
 
-        if tenant_id is not None:
-            stmt = stmt.where(Skill.tenant_id == tenant_id)
-        else:
-            stmt = stmt.where(Skill.tenant_id.is_(None))
+        stmt = stmt.where(tenant_filter(Skill, tenant_id))
 
         if categories:
             # Query if the string value is present in the categories array
@@ -285,10 +294,7 @@ class SkillService:
         stmt = select(Skill).where(Skill.status != 0)
 
         # Apply filters
-        if tenant_id is not None:
-            stmt = stmt.where(Skill.tenant_id == tenant_id)
-        else:
-            stmt = stmt.where(Skill.tenant_id.is_(None))
+        stmt = stmt.where(tenant_filter(Skill, tenant_id))
 
         if categories:
             stmt = stmt.where(Skill.categories.any(categories))
@@ -364,8 +370,14 @@ class SkillService:
             return None
         
         # Check if name is being changed and if new name already exists
+        synchronize_tenant_data(update_data)
+
         if "name" in update_data and update_data["name"] != skill.name:
-            existing = await self.get_by_name(update_data["name"], update_data.get("tenant_id", skill.tenant_id))
+            existing = await self.get_by_name(
+                update_data["name"],
+                update_data.get("tenant_id", skill.tenant_id),
+                update_data.get("tenant_ids", skill.tenant_ids),
+            )
             if existing and existing.id != skill.id:
                 raise ConflictException(
                     message=f"Skill with name '{update_data['name']}' already exists"
@@ -495,10 +507,7 @@ class SkillService:
             .where(Skill.category != "")
         )
 
-        if tenant_id is not None:
-            stmt = stmt.where(Skill.tenant_id == tenant_id)
-        else:
-            stmt = stmt.where(Skill.tenant_id.is_(None))
+        stmt = stmt.where(tenant_filter(Skill, tenant_id))
 
         stmt = stmt.group_by(Skill.category).order_by(desc(func.count(Skill.id)))
 
@@ -518,10 +527,7 @@ class SkillService:
         """
         # Base query logic with tenant_id filter
         def apply_tenant_filter(stmt_query):
-            if tenant_id is not None:
-                return stmt_query.where(Skill.tenant_id == tenant_id)
-            else:
-                return stmt_query.where(Skill.tenant_id.is_(None))
+            return stmt_query.where(tenant_filter(Skill, tenant_id))
 
         # Total skills count
         total_stmt = apply_tenant_filter(select(func.count()).select_from(Skill))

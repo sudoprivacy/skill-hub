@@ -38,7 +38,19 @@ async def list_assistants_cursor():
     * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
     * `query` (str, 可选): 用于匹配助手名称或描述的搜索关键字。
     * `category` (str, 可选): 用于过滤助手列表的分类名称，匹配 categories 数组。
-    * `tenant_id` (str, 可选): 租户ID，用于过滤特定租户的助手。如果不传则只返回公共(无租户)的助手。
+    * `tenant_id` (str, 可选): 返回 `tenantIds` 中包含该 ID 的助手，同时兼容旧
+      `tenantId` 数据。不传时只返回公共助手。
+
+    ## 响应中的租户字段
+
+    ```json
+    {
+        "tenantId": "tenant-a",
+        "tenantIds": ["tenant-a", "tenant-b"]
+    }
+    ```
+
+    `tenantId` 始终是 `tenantIds` 的首项，用于兼容旧客户端。
     """
     cursor = request.args.get("cursor", None)
     limit = request.args.get("limit", 10, type=int)
@@ -79,7 +91,8 @@ async def list_assistants_admin_cursor():
     * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
     * `query` (str, 可选): 用于匹配助手名称或描述的搜索关键字。
     * `category` (str, 可选): 用于过滤助手列表的分类名称，匹配 categories 数组。
-    * `tenant_id` (str, 可选): 租户ID，用于过滤特定租户的助手。如果不传则只返回公共(无租户)的助手。
+    * `tenant_id` (str, 可选): 返回 `tenantIds` 中包含该 ID 的助手，同时兼容旧
+      `tenantId` 数据。不传时只返回公共助手。
     * `status` (int, 可选): 过滤助手状态，默认不传为全部状态。
     """
     cursor = request.args.get("cursor", None)
@@ -112,7 +125,33 @@ async def list_assistants_admin_cursor():
 @assistants_router.route("/<assistant_id>", methods=["GET"])
 @token_required
 async def get_assistant(assistant_id: str):
-    """Get assistant by ID"""
+    """
+    # 获取数字助手详情
+
+    返回指定助手及其版本列表。
+
+    ## 路径参数 (Path Parameters)
+
+    * `assistant_id` (str): 助手 UUID。
+
+    ## 响应 (Returns)
+
+    ```json
+    {
+        "status": "success",
+        "data": {
+            "assistant": {
+                "id": "uuid",
+                "name": "string",
+                "profession": "string",
+                "tenantId": "tenant-a",
+                "tenantIds": ["tenant-a", "tenant-b"]
+            },
+            "versions": []
+        }
+    }
+    ```
+    """
     async with get_session() as session:
         assistant_service = AssistantService(session)
         assistant_version_service = AssistantVersionService(session)
@@ -154,7 +193,11 @@ async def create_assistant():
     * `profession` (str, 必填): 助手职业/角色。
     * `description` (str, 可选): 助手描述。
     * `defaultInitPrompt` 或 `default_init_prompt` (str, 可选): 默认的初始化提示词。
-    * `tenantId` 或 `tenant_id` (str, 可选): 租户ID。
+    * `tenantIds` 或 `tenant_ids` (list/JSON/逗号分隔字符串, 可选): 租户 ID 列表。
+      multipart/form-data 可传 JSON 字符串 `["tenant-a", "tenant-b"]` 或
+      `tenant-a,tenant-b`。
+    * `tenantId` 或 `tenant_id` (str, 可选): 单租户兼容字段。仅在未提供
+      `tenantIds`/`tenant_ids` 时生效；不传租户字段则创建公共助手。
     * `sortOrder` 或 `sort_order` (int, 可选): 排序顺序，默认为0。
     * `status` (int, 可选): 助手状态，0表示审核中，1表示已发布。默认为0。
     * `categories` (str 或 list, 可选): 助手分类。可以是 JSON 字符串、逗号分隔的字符串或列表。
@@ -162,6 +205,23 @@ async def create_assistant():
     * `prompt_file` (file, 可选): Markdown 格式的提示词文件 (.md)。
     * `avatar` (file, 可选): PNG 格式的头像文件 (.png)。
     * `source_url` (file, 可选): ZIP 格式的源文件压缩包 (.zip)。
+
+    ## 响应 (Returns)
+
+    ```json
+    {
+        "status": "success",
+        "data": {
+            "assistant": {
+                "id": "uuid",
+                "name": "string",
+                "tenantId": "tenant-a",
+                "tenantIds": ["tenant-a", "tenant-b"]
+            },
+            "version": null
+        }
+    }
+    ```
     """
     form_data = await request.form
     files = await request.files
@@ -197,7 +257,9 @@ async def create_assistant():
         assistant_service = AssistantService(session)
         assistant_version_service = AssistantVersionService(session)
 
-        existing = await assistant_service.get_by_name(req.name)
+        existing = await assistant_service.get_by_name(
+            req.name, req.tenant_id, req.tenant_ids
+        )
         assistant_id = str(existing.id) if existing else assistant_id
         if existing and not source_url_file:
             raise BadRequestException(message="Assistant name already exists")
@@ -335,7 +397,43 @@ async def create_assistant():
 @assistants_router.route("/<assistant_id>", methods=["PUT"])
 @token_required
 async def update_assistant(assistant_id: str):
-    """Update an existing assistant"""
+    """
+    # 更新数字助手
+
+    使用 JSON 更新助手的非空字段。
+
+    ## 路径参数 (Path Parameters)
+
+    * `assistant_id` (str): 助手 UUID。
+
+    ## 租户字段
+
+    * `tenantIds` 或 `tenant_ids` (list/JSON/逗号分隔字符串, 可选): 完整替换助手的
+      租户归属列表；复数字段优先。
+    * `tenantId` 或 `tenant_id` (str, 可选): 单租户兼容字段，会转换为单元素数组。
+    * 传 `tenantIds: []` 可将助手改为公共助手。
+
+    ## 请求示例
+
+    ```json
+    {
+        "tenantIds": ["tenant-a", "tenant-b"]
+    }
+    ```
+
+    ## 响应示例
+
+    ```json
+    {
+        "status": "success",
+        "data": {
+            "id": "uuid",
+            "tenantId": "tenant-a",
+            "tenantIds": ["tenant-a", "tenant-b"]
+        }
+    }
+    ```
+    """
     data = await request.get_json()
     if not data:
         raise BadRequestException(message="Invalid JSON payload")
