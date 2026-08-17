@@ -53,6 +53,8 @@ export default function AssistantFormDrawer({
         name: assistant.name,
         profession: assistant.profession,
         status: assistant.status,
+        tenant_ids:
+          assistant.tenantIds ?? (assistant.tenantId ? [assistant.tenantId] : []),
         sort_order: assistant.sortOrder ?? 0,
         categories: assistant.categories ?? [],
         skills: assistant.skills ?? [],
@@ -61,7 +63,7 @@ export default function AssistantFormDrawer({
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ status: 0, sort_order: 0 });
+      form.setFieldsValue({ status: 0, sort_order: 0, tenant_ids: [] });
     }
   }, [open, mode, assistant, form]);
 
@@ -79,6 +81,10 @@ export default function AssistantFormDrawer({
         if (values.sort_order !== undefined)
           fd.append("sort_order", String(values.sort_order));
         fd.append(
+          "tenant_ids",
+          JSON.stringify((values.tenant_ids as string[]) ?? [])
+        );
+        fd.append(
           "categories",
           JSON.stringify((values.categories as string[]) ?? [])
         );
@@ -95,6 +101,7 @@ export default function AssistantFormDrawer({
         profession: values.profession,
         description: values.description,
         default_init_prompt: values.default_init_prompt,
+        tenant_ids: values.tenant_ids ?? [],
         status: values.status,
         sort_order: values.sort_order,
         categories: values.categories ?? [],
@@ -150,6 +157,14 @@ export default function AssistantFormDrawer({
         </Form.Item>
         <Form.Item name="status" label="状态">
           <Select options={STATUS_OPTIONS} />
+        </Form.Item>
+        <Form.Item name="tenant_ids" label="租户">
+          <Select
+            mode="tags"
+            allowClear
+            tokenSeparators={[","]}
+            placeholder="输入租户 ID"
+          />
         </Form.Item>
         <Form.Item name="categories" label="分类（可多选/可输入）">
           <Select

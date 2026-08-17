@@ -193,6 +193,13 @@ Response `data`:
 
 ### Skill Endpoints
 
+Skills and assistants support multiple tenant owners. Skill APIs use
+`tenant_ids`; assistant APIs use `tenantIds` and also accept `tenant_ids`.
+The legacy singular fields remain in requests and responses. When plural and
+singular fields are both present, the plural array is authoritative and the
+singular value is synchronized to its first item. An empty array makes a
+resource public.
+
 #### List Published Skills
 
 `GET /api/skills/cursor`
@@ -207,7 +214,7 @@ Query parameters:
 | `limit` | integer | No | `10` | Maximum number of records |
 | `query` | string | No | `""` | Search skill name or description |
 | `categories` | string | No | `""` | Filter by category |
-| `tenant_id` | string | No | `null` | Filter by tenant |
+| `tenant_id` | string | No | `null` | Match resources containing this tenant ID; omit for public resources |
 
 Response `data`:
 
@@ -219,7 +226,8 @@ Response `data`:
       "name": "weather",
       "display_name": "Weather Forecast",
       "author_id": "uuid",
-      "tenant_id": null,
+      "tenant_id": "tenant-a",
+      "tenant_ids": ["tenant-a", "tenant-b"],
       "description": "Skill description",
       "category": "Tools",
       "categories": ["Tools"],
@@ -278,7 +286,8 @@ Response `data`:
     "name": "weather",
     "display_name": "Weather Forecast",
     "author_id": "uuid",
-    "tenant_id": null,
+    "tenant_id": "tenant-a",
+    "tenant_ids": ["tenant-a", "tenant-b"],
     "description": "Skill description",
     "category": "Tools",
     "categories": ["Tools"],
@@ -335,7 +344,8 @@ Form fields:
 | `homepage` | string | No | Homepage URL |
 | `changelog` | string | No | Version changelog |
 | `author_id` | UUID | No | Author ID |
-| `tenant_id` | string | No | Tenant ID. Omit for public skills |
+| `tenant_ids` or `tenantIds` | array/JSON/CSV | No | Tenant IDs. The plural field takes precedence; send `[]` for public skills |
+| `tenant_id` or `tenantId` | string | No | Legacy single-tenant field, used only when the plural field is omitted |
 | `sort_order` | integer | No | Display order. Defaults to `0` |
 | `status` | integer | No | `0` pending review, `1` approved. Defaults to `0` |
 
@@ -384,7 +394,8 @@ Supported fields:
 | `icon_file` | file | New icon. Multipart only, `.png` or `.svg` |
 | `homepage` | string | Homepage URL |
 | `author_id` or `authorId` | UUID | Author ID |
-| `tenant_id` or `tenantId` | string | Tenant ID |
+| `tenant_ids` or `tenantIds` | array/JSON/CSV | Complete tenant list. Takes precedence; send `[]` for a public skill |
+| `tenant_id` or `tenantId` | string | Legacy single-tenant field |
 | `sort_order` or `sortOrder` | integer | Display order |
 | `status` | integer | Skill status |
 | `star_count` or `starCount` | integer | Star count |
@@ -475,7 +486,7 @@ Query parameters:
 | `limit` | integer | No | `10` | Maximum number of records |
 | `query` | string | No | `""` | Search assistant name or description |
 | `category` | string | No | `""` | Filter by value in `categories` |
-| `tenant_id` | string | No | `null` | Filter by tenant |
+| `tenant_id` | string | No | `null` | Match resources containing this tenant ID; omit for public resources |
 
 Response `data`:
 
@@ -491,7 +502,8 @@ Response `data`:
       "avatar": "https://...",
       "sourceUrl": "https://...",
       "defaultInitPrompt": "Hello",
-      "tenantId": null,
+      "tenantId": "tenant-a",
+      "tenantIds": ["tenant-a", "tenant-b"],
       "sortOrder": 0,
       "categories": ["Research"],
       "status": 1,
@@ -535,7 +547,8 @@ Response `data`:
     "avatar": "https://...",
     "sourceUrl": "https://...",
     "defaultInitPrompt": "Hello",
-    "tenantId": null,
+    "tenantId": "tenant-a",
+    "tenantIds": ["tenant-a", "tenant-b"],
     "sortOrder": 0,
     "categories": ["Research"],
     "status": 1,
@@ -573,7 +586,8 @@ Form fields:
 | `version` | string | No | Source package version. Defaults to `v1.0.0` |
 | `description` | string | No | Description |
 | `defaultInitPrompt` or `default_init_prompt` | string | No | Default initial prompt |
-| `tenantId` or `tenant_id` | string | No | Tenant ID |
+| `tenantIds` or `tenant_ids` | array/JSON/CSV | No | Tenant IDs. The plural field takes precedence; send `[]` for public assistants |
+| `tenantId` or `tenant_id` | string | No | Legacy single-tenant field, used only when the plural field is omitted |
 | `sortOrder` or `sort_order` | integer | No | Display order. Defaults to `0` |
 | `status` | integer | No | `0` pending review, `1` approved. Defaults to `0` |
 | `categories` | array/string | No | Categories. String values may be JSON or comma-separated |
@@ -630,7 +644,8 @@ Supported fields:
 | `avatar` | string | Avatar URL or object key |
 | `sourceUrl` or `source_url` | string | Source URL or object key |
 | `defaultInitPrompt` or `default_init_prompt` | string | Default initial prompt |
-| `tenantId` or `tenant_id` | string | Tenant ID |
+| `tenantIds` or `tenant_ids` | array/JSON/CSV | Complete tenant list. Takes precedence; send `[]` for a public assistant |
+| `tenantId` or `tenant_id` | string | Legacy single-tenant field |
 | `sortOrder` or `sort_order` | integer | Display order |
 | `categories` | array/string | Categories. String values may be JSON or comma-separated |
 | `skills` | array/string | Skill UUIDs. String values may be JSON or comma-separated |

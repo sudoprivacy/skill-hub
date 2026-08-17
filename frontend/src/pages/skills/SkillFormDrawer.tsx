@@ -50,6 +50,8 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         name: skill.name,
         display_name: skill.display_name,
         status: skill.status,
+        tenant_ids:
+          skill.tenant_ids ?? (skill.tenant_id ? [skill.tenant_id] : []),
         categories: skill.categories ?? [],
         sort_order: skill.sort_order ?? 0,
         description: skill.description,
@@ -58,7 +60,11 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ status: STATUS.PENDING, sort_order: 0 });
+      form.setFieldsValue({
+        status: STATUS.PENDING,
+        sort_order: 0,
+        tenant_ids: [],
+      });
     }
   }, [open, mode, skill, form]);
 
@@ -70,6 +76,10 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
         fd.append("display_name", String(values.display_name ?? ""));
         fd.append("version", String(values.version ?? ""));
         appendOptional(fd, values, { includeStatus: isAdmin });
+        fd.append(
+          "tenant_ids",
+          JSON.stringify((values.tenant_ids as string[]) ?? [])
+        );
         (values.categories as string[] | undefined)?.forEach((c) =>
           fd.append("categories", c)
         );
@@ -91,11 +101,16 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
           "categories",
           JSON.stringify((values.categories as string[]) ?? [])
         );
+        fd.append(
+          "tenant_ids",
+          JSON.stringify((values.tenant_ids as string[]) ?? [])
+        );
         fd.append("icon_file", iconFile[0].originFileObj as Blob);
         return updateSkill(skill!.id, fd);
       }
       const payload: Record<string, unknown> = {
         display_name: values.display_name,
+        tenant_ids: values.tenant_ids ?? [],
         categories: values.categories ?? [],
         sort_order: values.sort_order,
         description: values.description,
@@ -184,6 +199,14 @@ export default function SkillFormDrawer({ open, mode, skill, onClose }: Props) {
 
         <Form.Item name="status" label="状态">
           <Select disabled={!isAdmin} options={STATUS_OPTIONS} />
+        </Form.Item>
+        <Form.Item name="tenant_ids" label="租户">
+          <Select
+            mode="tags"
+            allowClear
+            tokenSeparators={[","]}
+            placeholder="输入租户 ID"
+          />
         </Form.Item>
         <Form.Item label="图标文件（.png/.svg，可选）">
           <Upload

@@ -123,6 +123,8 @@ async def list_skills_cursor():
     * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
     * `query` (str, 可选): 用于匹配技能名称或描述的搜索关键字。
     * `categories` (str, 可选): 用于过滤技能列表的技能分类。
+    * `tenant_id` (str, 可选): 返回 `tenant_ids` 中包含该 ID 的技能，同时兼容旧
+      `tenant_id` 数据。不传时只返回公共技能。
     
     ## 响应 (Returns)
     
@@ -148,6 +150,8 @@ async def list_skills_cursor():
                     "sort_order": "int",
                     "icon": "string",
                     "author_id": "string",
+                    "tenant_id": "tenant-a",
+                    "tenant_ids": ["tenant-a", "tenant-b"],
                     "is_active": true,
                     "created_at": "datetime",
                     "updated_at": "datetime"
@@ -200,6 +204,8 @@ async def list_skills_admin_cursor():
     * `limit` (int, 可选): 每次请求返回的记录数。默认为 `10`。
     * `query` (str, 可选): 用于匹配技能名称或描述的搜索关键字。
     * `categories` (str, 可选): 用于过滤技能列表的技能分类。
+    * `tenant_id` (str, 可选): 返回 `tenant_ids` 中包含该 ID 的技能，同时兼容旧
+      `tenant_id` 数据。不传时只返回公共技能。
     * `status` (int, 可选): 过滤技能状态，默认不传为全部状态。
     * `mine` (bool, 可选): 仅返回当前登录用户创建的技能。
 
@@ -301,7 +307,8 @@ async def get_skill(skill_id: str):
                 "status": "int",
                 "icon": "string",
                 "author_id": "string",
-                "tenant_id": "string",
+                "tenant_id": "tenant-a",
+                "tenant_ids": ["tenant-a", "tenant-b"],
                 "is_active": true,
                 "created_at": "datetime",
                 "updated_at": "datetime"
@@ -380,7 +387,11 @@ async def add_skill(skill: SkillCreateRequest):
     * `homepage` (str, 可选): 技能的主页链接。
     * `changelog` (str, 可选): 该版本的更新日志。
     * `author_id` (str, 可选): 作者 ID。
-    * `tenant_id` (str, 可选): 租户 ID。用于区分不同租户的私有技能，不传则默认为公共技能。
+    * `tenant_ids` 或 `tenantIds` (list/JSON/逗号分隔字符串, 可选): 租户 ID 列表。
+      multipart/form-data 可传 JSON 字符串 `["tenant-a", "tenant-b"]` 或
+      `tenant-a,tenant-b`。
+    * `tenant_id` 或 `tenantId` (str, 可选): 单租户兼容字段。仅在未提供
+      `tenant_ids`/`tenantIds` 时生效；不传租户字段则创建公共技能。
     * `sort_order` (int, 可选): 排序权重。
     * `status` (int, 可选): 技能状态，0表示审核中，1表示已上线。默认为0。
 
@@ -413,7 +424,8 @@ async def add_skill(skill: SkillCreateRequest):
                 "status": "int",
                 "icon": "string",
                 "author_id": "string",
-                "tenant_id": "string",
+                "tenant_id": "tenant-a",
+                "tenant_ids": ["tenant-a", "tenant-b"],
                 "is_active": true,
                 "created_at": "datetime",
                 "updated_at": "datetime"
@@ -457,7 +469,9 @@ async def add_skill(skill: SkillCreateRequest):
         skill_service = SkillService(session)
         skill_version_service = SkillVersionService(session)
 
-        existing_skill = await skill_service.get_by_name(skill.name, skill.tenant_id)
+        existing_skill = await skill_service.get_by_name(
+            skill.name, skill.tenant_id, skill.tenant_ids
+        )
         skill_id = str(existing_skill.id) if existing_skill else str(uuid.uuid4())
 
         existing_version = await skill_version_service.get_by_skill_and_version(skill_id, skill.version)
@@ -539,7 +553,9 @@ async def add_skill(skill: SkillCreateRequest):
             skill_data["creator_id"] = current["id"]
 
         # Create or update skill
-        existing_skill = await skill_service.get_by_name(skill.name, skill.tenant_id)
+        existing_skill = await skill_service.get_by_name(
+            skill.name, skill.tenant_id, skill.tenant_ids
+        )
         if not existing_skill:
             # Overwrite id to be our generated skill_id
             skill_data["id"] = skill_id
@@ -578,6 +594,30 @@ async def update_skill(skill_id: str):
 
     支持 JSON 或 multipart/form-data。上传 `.png` 或 `.svg` 格式的 `icon_file` 时会将图标保存到对象存储，
     并把 `icon` 更新为新的对象 key。
+
+    ## 路径参数 (Path Parameters)
+
+    * `skill_id` (str): 技能 UUID。
+
+    ## 租户字段
+
+    * `tenant_ids` 或 `tenantIds` (list/JSON/逗号分隔字符串, 可选): 完整替换技能的
+      租户归属列表；复数字段优先。
+    * `tenant_id` 或 `tenantId` (str, 可选): 单租户兼容字段，会转换为单元素数组。
+    * 传 `tenant_ids: []` 可将技能改为公共技能。
+
+    更新成功后，响应中的 `tenant_id` 是 `tenant_ids` 的首项，用于兼容旧客户端：
+
+    ```json
+    {
+        "status": "success",
+        "data": {
+            "id": "uuid",
+            "tenant_id": "tenant-a",
+            "tenant_ids": ["tenant-a", "tenant-b"]
+        }
+    }
+    ```
     """
     content_type = request.content_type or ""
     files = await request.files

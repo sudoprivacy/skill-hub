@@ -117,6 +117,14 @@ export default function SkillDetailDrawer({ open, skillId, onClose }: Props) {
             <Descriptions.Item label="状态">
               <StatusTag status={skill.status} />
             </Descriptions.Item>
+            <Descriptions.Item label="租户">
+              {(skill.tenant_ids ?? (skill.tenant_id ? [skill.tenant_id] : []))
+                .length
+                ? (skill.tenant_ids ?? [skill.tenant_id!]).map((tenantId) => (
+                    <Tag key={tenantId}>{tenantId}</Tag>
+                  ))
+                : "公共"}
+            </Descriptions.Item>
             <Descriptions.Item label="分类">
               {skill.categories?.length
                 ? skill.categories.map((c) => <Tag key={c}>{c}</Tag>)

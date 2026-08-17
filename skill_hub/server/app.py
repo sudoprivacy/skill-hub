@@ -31,7 +31,15 @@ def create_app(config: Config) -> Quart:
     # Configure OpenAPI / Redoc
     QuartSchema(
         app,
-        info=Info(title="Skill Hub API", version="0.1.0", description="API for Skill Hub"),
+        info=Info(
+            title="Skill Hub API",
+            version="0.1.0",
+            description=(
+                "API for Skill Hub. Skills and assistants support tenant_ids/"
+                "tenantIds arrays; tenant_id/tenantId remains available for "
+                "single-tenant clients."
+            ),
+        ),
         openapi_path=f"{config.api_prefix}/openapi.json",
         swagger_ui_path=f"{config.api_prefix}/docs",
         redoc_ui_path=f"{config.api_prefix}/redoc",

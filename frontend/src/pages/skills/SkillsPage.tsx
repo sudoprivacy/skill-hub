@@ -45,10 +45,12 @@ export default function SkillsPage() {
 
   // 待应用的输入值
   const [queryInput, setQueryInput] = useState("");
+  const [tenantInput, setTenantInput] = useState("");
   const [filters, setFilters] = useState<{
     query: string;
     status?: number;
     categories?: string;
+    tenant_id?: string;
     mine?: boolean;
   }>({ query: "", mine: false });
 
@@ -59,6 +61,7 @@ export default function SkillsPage() {
       query: filters.query,
       status: filters.status,
       categories: filters.categories,
+      tenant_id: filters.tenant_id,
       mine: filters.mine,
     }).then((p) => ({
       items: p.skills,
@@ -130,6 +133,24 @@ export default function SkillsPage() {
       key: "status",
       width: 90,
       render: (s: number) => <StatusTag status={s} />,
+    },
+    {
+      title: "租户",
+      key: "tenants",
+      width: 180,
+      render: (_, row) => {
+        const tenantIds =
+          row.tenant_ids ?? (row.tenant_id ? [row.tenant_id] : []);
+        return tenantIds.length ? (
+          <Space size={[0, 4]} wrap>
+            {tenantIds.map((tenantId) => (
+              <Tag key={tenantId}>{tenantId}</Tag>
+            ))}
+          </Space>
+        ) : (
+          "公共"
+        );
+      },
     },
     {
       title: "下载量",
@@ -231,6 +252,14 @@ export default function SkillsPage() {
             style={{ width: 160 }}
             options={categoryOptions}
             onChange={(v) => applyFilters({ categories: v })}
+          />
+          <Input.Search
+            placeholder="租户 ID"
+            allowClear
+            style={{ width: 180 }}
+            value={tenantInput}
+            onChange={(e) => setTenantInput(e.target.value)}
+            onSearch={(v) => applyFilters({ tenant_id: v || undefined })}
           />
           <Switch
             checked={Boolean(filters.mine)}

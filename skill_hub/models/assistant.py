@@ -19,7 +19,8 @@ class Assistant(Base):
         prompt_file: Path/URL to the prompt md file
         avatar: URL to the avatar
         default_init_prompt: Default initial prompt text
-        tenant_id: Tenant ID
+        tenant_id: Primary tenant ID retained for backward compatibility
+        tenant_ids: Tenant IDs
         sort_order: Sort order for display priority
         categories: Array of category names or IDs
         skills: Array of associated skill IDs
@@ -85,6 +86,12 @@ class Assistant(Base):
         nullable=True,
         index=True,
         comment="Tenant ID"
+    )
+
+    tenant_ids = Column(
+        ARRAY(String(255)),
+        nullable=True,
+        comment="Tenant IDs"
     )
 
     sort_order = Column(
@@ -169,6 +176,9 @@ class Assistant(Base):
             )[0]
             source_url = latest_version.source_url
 
+        from skill_hub.utils.tenant_utils import effective_tenant_ids
+
+        tenant_ids = effective_tenant_ids(self)
         result = {
             "id": str(self.id),
             "name": self.name,
@@ -178,7 +188,8 @@ class Assistant(Base):
             "avatar": _resolve(self.avatar),
             "sourceUrl": _resolve(source_url),
             "defaultInitPrompt": self.default_init_prompt,
-            "tenantId": self.tenant_id,
+            "tenantId": tenant_ids[0] if tenant_ids else None,
+            "tenantIds": tenant_ids,
             "sortOrder": self.sort_order,
             "categories": self.categories,
             "status": self.status,
@@ -233,10 +244,20 @@ class Assistant(Base):
         elif "default_init_prompt" in data:
             assistant.default_init_prompt = data["default_init_prompt"]
 
+        from skill_hub.utils.tenant_utils import synchronize_tenant_data
+
+        tenant_data = {}
+        if "tenantIds" in data:
+            tenant_data["tenant_ids"] = data["tenantIds"]
+        elif "tenant_ids" in data:
+            tenant_data["tenant_ids"] = data["tenant_ids"]
         if "tenantId" in data:
-            assistant.tenant_id = data["tenantId"]
+            tenant_data["tenant_id"] = data["tenantId"]
         elif "tenant_id" in data:
-            assistant.tenant_id = data["tenant_id"]
+            tenant_data["tenant_id"] = data["tenant_id"]
+        synchronize_tenant_data(tenant_data)
+        for key, value in tenant_data.items():
+            setattr(assistant, key, value)
 
         if "sortOrder" in data:
             assistant.sort_order = data["sortOrder"]

@@ -9,6 +9,11 @@ from sqlalchemy.orm import selectinload
 
 from skill_hub.models.assistant import Assistant
 from skill_hub.models.assistant_version import AssistantVersion
+from skill_hub.utils.tenant_utils import (
+    synchronize_tenant_data,
+    tenant_filter,
+    tenants_filter,
+)
 
 class AssistantService:
     """Service for managing assistants"""
@@ -38,7 +43,12 @@ class AssistantService:
         except ValueError:
             return None
             
-    async def get_by_name(self, name: str) -> Optional[Assistant]:
+    async def get_by_name(
+        self,
+        name: str,
+        tenant_id: Optional[str] = None,
+        tenant_ids: Optional[List[str]] = None,
+    ) -> Optional[Assistant]:
         """Get assistant by name
         
         Args:
@@ -48,6 +58,8 @@ class AssistantService:
             Assistant if found, None otherwise
         """
         query = select(Assistant).where(Assistant.name == name)
+        if tenant_id is not None or tenant_ids is not None:
+            query = query.where(tenants_filter(Assistant, tenant_ids, tenant_id))
         result = await self.session.execute(query)
         return result.scalar_one_or_none()
         
@@ -62,10 +74,7 @@ class AssistantService:
         """
         query = select(Assistant).options(selectinload(Assistant.versions))
 
-        if tenant_id is not None:
-            query = query.where(Assistant.tenant_id == tenant_id)
-        else:
-            query = query.where(Assistant.tenant_id.is_(None))
+        query = query.where(tenant_filter(Assistant, tenant_id))
 
         query = query.where(Assistant.status == 1)
 
@@ -118,10 +127,7 @@ class AssistantService:
                 (Assistant.description.ilike(search_pattern))
             )
 
-        if tenant_id is not None:
-            query = query.where(Assistant.tenant_id == tenant_id)
-        else:
-            query = query.where(Assistant.tenant_id.is_(None))
+        query = query.where(tenant_filter(Assistant, tenant_id))
 
         if status is not None:
             query = query.where(Assistant.status == status)
@@ -277,6 +283,7 @@ class AssistantService:
         Returns:
             Created Assistant
         """
+        synchronize_tenant_data(data)
         assistant = Assistant(**data)
         self.session.add(assistant)
         await self.session.commit()
@@ -304,6 +311,8 @@ class AssistantService:
             if not assistant:
                 return None
                 
+            synchronize_tenant_data(data)
+
             # Update fields
             for key, value in data.items():
                 if hasattr(assistant, key):

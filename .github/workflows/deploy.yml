@@ -72,29 +72,31 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 10m
-          command_timeout: 10m
+          command_timeout: 60m
           script: |
-            set -e  # Exit immediately if a command exits with a non-zero status.
+            set -e
 
             # Log into GitHub Container Registry
-            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ${{ env.REGISTRY }} -u ${{ github.actor }} --password-stdin
+            echo "${{ secrets.GITHUB_TOKEN }}" | \
+              docker login "${{ env.REGISTRY }}" \
+                -u "${{ github.actor }}" \
+                --password-stdin
 
             # Navigate to deployment directory
-            cd ${{ secrets.DEPLOY_PATH }}
+            cd "${{ secrets.DEPLOY_PATH }}"
 
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             export IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
 
-            # Pull the image built from this commit with timeout
-            timeout 5m docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${IMAGE_TAG} || echo "Pull timeout warning - continuing deployment"
+            # Pull the new image before replacing the running container
+            timeout 40m docker compose \
+              -f docker-compose.prod.yml \
+              pull
 
-            # Recreate containers with the new image
-            # Stop existing containers that might use the same names if they were launched differently
-            docker compose -f docker-compose.prod.yml down || true
+            # Recreate the service using the successfully downloaded image
+            docker compose \
+              -f docker-compose.prod.yml \
+              up -d
 
-            # Pull and start with explicit timeout
-            timeout 8m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml pull || echo "Compose pull timeout warning"
-            timeout 5m env GITHUB_REPOSITORY=${{ env.IMAGE_NAME }} IMAGE_TAG=${IMAGE_TAG} docker compose -f docker-compose.prod.yml up -d
-
-            # Clean up old dangling images to save disk space
+            # Clean up unused images to save disk space
             docker image prune -af

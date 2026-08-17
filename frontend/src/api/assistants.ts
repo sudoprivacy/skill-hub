@@ -7,6 +7,7 @@ export interface AssistantListParams {
   query?: string;
   category?: string;
   status?: number;
+  tenant_id?: string;
   mine?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function listAssistantsAdmin(
       query: params.query || undefined,
       category: params.category || undefined,
       status: params.status,
+      tenant_id: params.tenant_id || undefined,
       mine: params.mine || undefined,
     },
   });

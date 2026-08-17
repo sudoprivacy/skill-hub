@@ -47,10 +47,12 @@ export default function AssistantsPage() {
     isAdmin || (Boolean(row.creator_id) && row.creator_id === myId);
 
   const [queryInput, setQueryInput] = useState("");
+  const [tenantInput, setTenantInput] = useState("");
   const [filters, setFilters] = useState<{
     query: string;
     status?: number;
     category?: string;
+    tenant_id?: string;
     mine?: boolean;
   }>({ query: "", mine: false });
 
@@ -61,6 +63,7 @@ export default function AssistantsPage() {
       query: filters.query,
       status: filters.status,
       category: filters.category,
+      tenant_id: filters.tenant_id,
       mine: filters.mine,
     }).then((p) => ({
       items: p.assistants,
@@ -132,6 +135,24 @@ export default function AssistantsPage() {
       key: "status",
       width: 90,
       render: (s: number) => <StatusTag status={s} />,
+    },
+    {
+      title: "租户",
+      key: "tenants",
+      width: 180,
+      render: (_, row) => {
+        const tenantIds =
+          row.tenantIds ?? (row.tenantId ? [row.tenantId] : []);
+        return tenantIds.length ? (
+          <Space size={[0, 4]} wrap>
+            {tenantIds.map((tenantId) => (
+              <Tag key={tenantId}>{tenantId}</Tag>
+            ))}
+          </Space>
+        ) : (
+          "公共"
+        );
+      },
     },
     {
       title: "创建人",
@@ -218,6 +239,14 @@ export default function AssistantsPage() {
             style={{ width: 160 }}
             options={categoryOptions}
             onChange={(v) => applyFilters({ category: v })}
+          />
+          <Input.Search
+            placeholder="租户 ID"
+            allowClear
+            style={{ width: 180 }}
+            value={tenantInput}
+            onChange={(e) => setTenantInput(e.target.value)}
+            onSearch={(v) => applyFilters({ tenant_id: v || undefined })}
           />
           <Switch
             checked={Boolean(filters.mine)}

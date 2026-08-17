@@ -7,6 +7,7 @@ export interface SkillListParams {
   query?: string;
   categories?: string;
   status?: number;
+  tenant_id?: string;
   mine?: boolean;
 }
 
@@ -21,6 +22,7 @@ export function listSkillsAdmin(params: SkillListParams): Promise<SkillCursorPag
       query: params.query || undefined,
       categories: params.categories || undefined,
       status: params.status,
+      tenant_id: params.tenant_id || undefined,
       mine: params.mine || undefined,
     },
   });

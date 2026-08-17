@@ -30,6 +30,7 @@ export interface Skill {
   display_name: string;
   author_id?: string;
   tenant_id?: string | null;
+  tenant_ids?: string[] | null;
   description?: string;
   category?: string;
   categories?: string[] | null;
@@ -60,6 +61,7 @@ export interface Assistant {
   sourceUrl?: string | null;
   defaultInitPrompt?: string | null;
   tenantId?: string | null;
+  tenantIds?: string[] | null;
   sortOrder?: number;
   categories?: string[] | null;
   status: number;
