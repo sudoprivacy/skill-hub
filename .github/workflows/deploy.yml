@@ -88,27 +88,11 @@ jobs:
         with:
           name: skill-hub-image-${{ github.sha }}
 
-      - name: Copy the verified image and deployment files
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          source: "docker-compose.prod.yml,scripts/deploy-image.sh,skill-hub-image-${{ github.sha }}.tar.gz,skill-hub-image-${{ github.sha }}.tar.gz.sha256"
-          target: ${{ secrets.DEPLOY_PATH }}
-          timeout: 10m
-          command_timeout: 20m
-
-      - name: Execute SSH Commands to Deploy
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 10m
-          command_timeout: 10m
-          script: |
-            set -e
-            cd "${{ secrets.DEPLOY_PATH }}"
-            export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
-            bash scripts/deploy-image.sh "${{ github.sha }}"
+      - name: Transfer and activate the verified image with bounded SSH
+        shell: bash
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USERNAME: ${{ secrets.SSH_USERNAME }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: bash scripts/deploy-over-ssh.sh "$GITHUB_SHA"
