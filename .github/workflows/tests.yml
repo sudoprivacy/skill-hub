@@ -1,0 +1,40 @@
+name: Tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-tests:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: qa
+          POSTGRES_PASSWORD: qa-tests
+          POSTGRES_DB: skill_hub_test
+        ports: [5432:5432]
+        options: >-
+          --health-cmd "pg_isready -U qa -d skill_hub_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://qa:qa-tests@localhost:5432/skill_hub_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install test dependencies
+        run: >-
+          python -m pip install SQLAlchemy==2.0.23 asyncpg==0.30.0
+          pytest==7.4.3 pydantic==2.6.1 python-dotenv==1.0.0
+          Quart==0.19.4 Flask==3.0.0
+      - name: Run all tests with real PostgreSQL
+        run: python -m pytest -q
