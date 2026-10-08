@@ -1,6 +1,7 @@
 """Assistant service"""
 
 import uuid
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy import select, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -144,14 +145,14 @@ class AssistantService:
 
         if cursor_data:
             cursor_sort_order = cursor_data.get('sort_order', 0)
-            cursor_created_at = cursor_data['created_at']
+            cursor_created_at = datetime.fromisoformat(cursor_data['created_at'])
             cursor_id = cursor_data['id']
 
             # Keyset pagination logic for sort_order DESC, created_at DESC, id DESC
             query = query.where(
                 (Assistant.sort_order < cursor_sort_order) |
-                ((Assistant.sort_order == cursor_sort_order) & (func.cast(Assistant.created_at, sqlalchemy.String) < cursor_created_at)) |
-                ((Assistant.sort_order == cursor_sort_order) & (func.cast(Assistant.created_at, sqlalchemy.String) == cursor_created_at) & (func.cast(Assistant.id, sqlalchemy.String) < cursor_id))
+                ((Assistant.sort_order == cursor_sort_order) & (Assistant.created_at < cursor_created_at)) |
+                ((Assistant.sort_order == cursor_sort_order) & (Assistant.created_at == cursor_created_at) & (func.cast(Assistant.id, sqlalchemy.String) < cursor_id))
             )
 
         # Order by sort_order DESC, created_at DESC, id DESC

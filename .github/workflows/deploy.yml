@@ -85,6 +85,19 @@ jobs:
             # Navigate to deployment directory
             cd "${{ secrets.DEPLOY_PATH }}"
 
+            # Retain the previous image and local config for release rollback.
+            release_backup="backups/release-${{ github.sha }}"
+            mkdir -p "${release_backup}"
+            chmod 700 "${release_backup}"
+            if docker inspect skill-hub >/dev/null 2>&1; then
+              docker inspect --format '{{.Image}}' skill-hub > "${release_backup}/previous-image-id"
+              docker inspect --format '{{.Config.Image}}' skill-hub > "${release_backup}/previous-image-tag"
+            fi
+            if [ -f .env ]; then
+              cp .env "${release_backup}/.env"
+              chmod 600 "${release_backup}/.env"
+            fi
+
             export GITHUB_REPOSITORY="${{ env.IMAGE_NAME }}"
             export IMAGE_TAG="sha-$(echo "${{ github.sha }}" | cut -c1-7)"
 
@@ -97,6 +110,3 @@ jobs:
             docker compose \
               -f docker-compose.prod.yml \
               up -d
-
-            # Clean up unused images to save disk space
-            docker image prune -af
