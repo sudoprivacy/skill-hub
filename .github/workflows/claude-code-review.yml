@@ -25,6 +25,8 @@ jobs:
       issues: read
       id-token: write
 
+    env:
+      ANTHROPIC_BASE_URL: https://api.sudorouter.ai
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -35,7 +37,7 @@ jobs:
         id: claude-review
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          anthropic_api_key: ${{ secrets.SUDOROUTER_CI_API_KEY }}
           show_full_output: true
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
